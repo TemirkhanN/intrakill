@@ -1,18 +1,13 @@
 package me.nasukhov.intrakill.storage
 
-import me.nasukhov.intrakill.scene.MediaEntry
-
-data class EntryPreview(
-    val entryId: Long,
-    val name: String,
-    val mediaType: String,   // "image", "gif", "video"
-    val previewBytes: ByteArray
-)
+import me.nasukhov.intrakill.content.Entry
 
 expect object SecureDatabase {
-    fun open(password: ByteArray)
+    fun open(password: String): Boolean
 
-    fun saveEntry(entry: MediaEntry)
+    fun saveEntry(entry: Entry)
 
-    fun listEntries(): List<EntryPreview>
+    fun listEntries(): List<Entry>
+
+    fun getById(entryId: String): Entry
 }

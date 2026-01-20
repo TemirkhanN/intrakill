@@ -42,7 +42,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
-            implementation(libs.sqlite.jdbc)
+            implementation(libs.desktop.database.sqlcipher)
         }
     }
 }

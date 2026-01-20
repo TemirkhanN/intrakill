@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.scene
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,67 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import me.nasukhov.intrakill.AppState
-import me.nasukhov.intrakill.storage.EntryPreview
+import me.nasukhov.intrakill.content.Attachment
+import me.nasukhov.intrakill.content.Entry
+import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.storage.FilePicker
-import me.nasukhov.intrakill.storage.SecureDatabase
-import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.util.UUID
-import javax.imageio.ImageIO
+import me.nasukhov.intrakill.storage.PickedMedia
 
 // commonMain
-
-data class PickedMedia(
-    val name: String,
-    val bytes: ByteArray,
-    val mimeType: String,
-) {
-    val mediaType = when {
-        mimeType.startsWith("image/") && mimeType != "image/gif" -> "image"
-        mimeType == "image/gif" -> "gif"
-        mimeType.startsWith("video/") -> "video"
-        else -> error("Unsupported media type: $mimeType")
-    }
-
-    fun generateImagePreview(maxSize: Int = 256): ByteArray {
-        val img = ImageIO.read(ByteArrayInputStream(bytes))
-        val scale = minOf(
-            maxSize.toDouble() / img.width,
-            maxSize.toDouble() / img.height,
-            1.0
-        )
-
-        val w = (img.width * scale).toInt()
-        val h = (img.height * scale).toInt()
-
-        val resized = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
-        val g = resized.createGraphics()
-        g.drawImage(img, 0, 0, w, h, null)
-        g.dispose()
-
-        val out = ByteArrayOutputStream()
-        ImageIO.write(resized, "jpg", out)
-        return out.toByteArray()
-    }
-}
-
-data class MediaEntry(
-    val media: List<PickedMedia>,
-    val tags: List<String>
-)
-
-// commonMain
-
-object MediaRepository {
-
-    fun save(entry: MediaEntry) {
-        SecureDatabase.saveEntry(entry)
-    }
-
-    fun listEntries(): List<EntryPreview>  = SecureDatabase.listEntries()
-}
 
 @Composable
 fun AddContentScene(onSuccess: () -> Unit) {
@@ -111,10 +58,14 @@ fun AddContentScene(onSuccess: () -> Unit) {
                 .fillMaxWidth()
         ) {
             items(selected) { media ->
-                Text(
-                    text = media.name,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                    Image(
+                        bitmap = media.preview,
+                        contentDescription = null,
+                    )
+                    Text(
+                        text = media.name,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
             }
         }
 
@@ -142,9 +93,16 @@ fun AddContentScene(onSuccess: () -> Unit) {
                 }
 
                 MediaRepository.save(
-                    MediaEntry(
-                        media = selected,
-                        tags = tags
+                    Entry(
+                        preview = selected.first().generateImagePreview(),
+                        attachments = selected.map {
+                            Attachment(
+                                mimeType = it.mimeType,
+                                content = it.bytes,
+                                preview = it.generateImagePreview()
+                            )
+                        },
+                        tags = tags,
                     )
                 )
 

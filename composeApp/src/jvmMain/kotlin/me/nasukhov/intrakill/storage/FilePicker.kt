@@ -2,7 +2,6 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.nasukhov.intrakill.scene.PickedMedia
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JFileChooser

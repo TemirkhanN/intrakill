@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
-import me.nasukhov.intrakill.encryption.SecurityManager
 import me.nasukhov.intrakill.storage.SecureDatabase
 
 @Composable
@@ -67,12 +66,11 @@ fun LoginScene(onLoginSuccess: () -> Unit) {
                     if (!violation.isEmpty()) {
                         errorMessage = violation
                     } else {
-                        // This password will be used to derive the SQLCipher key
-
-                        SecurityManager.initializeKey(password)
-                        SecureDatabase.open(SecurityManager.getSecretKey())
-
-                        onLoginSuccess()
+                        if (SecureDatabase.open(password)) {
+                            onLoginSuccess()
+                        } else {
+                            errorMessage = "Incorrect password"
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
