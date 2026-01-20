@@ -50,7 +50,7 @@ actual object SecureDatabase {
 
                 // Now insert attachments
                 val attachStmt = db.prepareStatement(
-                    "INSERT INTO attachment(id, entry_id, content, preview, mime_type) VALUES (?,?,?,?,?)"
+                    "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
                 )
                 attachStmt.use { aStmt ->
                     for (a in entry.attachments) {
@@ -59,6 +59,7 @@ actual object SecureDatabase {
                         aStmt.setBytes(3, a.content)
                         aStmt.setBytes(4, a.preview)
                         aStmt.setString(5, a.mimeType)
+                        aStmt.setBytes(6, a.hashsum)
                         aStmt.addBatch()
                     }
                     aStmt.executeBatch()
@@ -187,10 +188,12 @@ actual object SecureDatabase {
                         preview BLOB NOT NULL,
                         mime_type TEXT NOT NULL CHECK(length(mime_type) > 5),
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        hashsum BLOB NOT NULL,
                         FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
                     );
                     CREATE INDEX IF NOT EXISTS idx_attachment_entry ON attachment(entry_id);
-                    CREATE INDEX idx_attachment_entry_created ON attachment(entry_id, created_at);
+                    CREATE INDEX IF NOT EXISTS idx_attachment_entry_created ON attachment(entry_id, created_at);
+                    CREATE INDEX IF NOT EXISTS idx_attachment_hashsum ON attachment(hashsum);
                     """
         )
 
