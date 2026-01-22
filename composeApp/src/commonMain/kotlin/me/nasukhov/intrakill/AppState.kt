@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 
 sealed interface Scene {
     data object Login : Scene
-    data object Content : Scene
+    data class Content(val filteredByTags: List<String> = emptyList()) : Scene
     data object NewEntry : Scene
     data class ViewEntry(val entryId: String) : Scene
 }
@@ -15,23 +15,29 @@ class AppState {
     var currentScene by mutableStateOf<Scene>(Scene.Login)
         private set
 
-    fun login() {
-        currentScene = Scene.Content
-    }
+    fun handle(event: AppEvent) {
+        when (event) {
+            is AppEvent.Logout -> {
+                currentScene = Scene.Login
+            }
 
-    fun logout() {
-        currentScene = Scene.Login
-    }
+            is AppEvent.LoginSucceeded -> {
+                currentScene = Scene.Content()
+            }
 
-    fun addNewEntry() {
-        currentScene = Scene.NewEntry
-    }
+            is AppEvent.AddNewEntry -> {
+                currentScene = Scene.NewEntry
+            }
 
-    fun listEntries() {
-        currentScene = Scene.Content
-    }
+            is AppEvent.ViewEntry -> {
+                currentScene = Scene.ViewEntry(event.entryId)
+            }
 
-    fun viewEntry(id: String) {
-        currentScene = Scene.ViewEntry(entryId = id)
+            is AppEvent.TagsSelected -> {
+                currentScene = Scene.Content(event.tags)
+            }
+
+            is AppEvent.Back -> {}
+        }
     }
 }

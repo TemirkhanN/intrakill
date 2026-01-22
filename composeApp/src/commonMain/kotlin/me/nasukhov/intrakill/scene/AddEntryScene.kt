@@ -17,21 +17,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.AppEvent
+import me.nasukhov.intrakill.LocalEventEmitter
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.storage.FilePicker
 import me.nasukhov.intrakill.storage.PickedMedia
 
-// commonMain
-
 @Composable
-fun AddContentScene(onSuccess: () -> Unit) {
+fun AddContentScene() {
     var selected by remember { mutableStateOf<List<PickedMedia>>(emptyList()) }
     var tagsInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
+    val eventEmitter = LocalEventEmitter.current
 
     Column(
         modifier = Modifier
@@ -92,7 +93,7 @@ fun AddContentScene(onSuccess: () -> Unit) {
                     return@Button
                 }
 
-                MediaRepository.save(
+                val entry = MediaRepository.save(
                     Entry(
                         preview = selected.first().generateImagePreview(),
                         attachments = selected.map {
@@ -109,7 +110,7 @@ fun AddContentScene(onSuccess: () -> Unit) {
                 selected = emptyList()
                 tagsInput = ""
                 error = null
-                onSuccess()
+                eventEmitter.emit(AppEvent.ViewEntry(entry.id))
             },
             modifier = Modifier.fillMaxWidth()
         ) {

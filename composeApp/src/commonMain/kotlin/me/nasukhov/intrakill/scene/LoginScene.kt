@@ -8,11 +8,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
+import me.nasukhov.intrakill.AppEvent
+import me.nasukhov.intrakill.LocalEventEmitter
 import me.nasukhov.intrakill.storage.SecureDatabase
 
 @Composable
-fun LoginScene(onLoginSuccess: () -> Unit) {
-
+fun LoginScene() {
+    val eventEmitter = LocalEventEmitter.current
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -67,7 +69,7 @@ fun LoginScene(onLoginSuccess: () -> Unit) {
                         errorMessage = violation
                     } else {
                         if (SecureDatabase.open(password)) {
-                            onLoginSuccess()
+                            eventEmitter.emit(AppEvent.LoginSucceeded)
                         } else {
                             errorMessage = "Incorrect password"
                         }

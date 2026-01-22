@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.content
 
+import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.storage.SecureDatabase
 import java.security.MessageDigest
 import java.util.UUID
@@ -28,11 +29,19 @@ data class Entry(
 
 object MediaRepository {
 
-    fun save(entry: Entry) {
+    fun save(entry: Entry): Entry {
         SecureDatabase.saveEntry(entry)
+
+        return entry
     }
 
-    fun listEntries(): List<Entry>  = SecureDatabase.listEntries()
+    // TODO not really clean, but so far so good
+    fun findEntries(filter: EntriesFilter): List<Entry>  = SecureDatabase.findEntries(filter)
 
     fun getById(entryId: String): Entry = SecureDatabase.getById(entryId)
 }
+
+data class Tag(
+    val name: String,
+    val frequency: Int
+)

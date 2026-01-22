@@ -13,20 +13,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.nasukhov.intrakill.AppEvent
+import me.nasukhov.intrakill.LocalEventEmitter
 
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
+import me.nasukhov.intrakill.storage.EntriesFilter
+import me.nasukhov.intrakill.storage.SecureDatabase
 
 @Composable
-fun EntryCell(
-    entry: Entry,
-    onClick: (entryId: String) -> Unit
-) {
+fun EntryCell(entry: Entry) {
+    val eventEmitter = LocalEventEmitter.current
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .border(1.dp, Color.Gray)
-            .clickable { onClick(entry.id) }
+            .clickable { eventEmitter.emit(AppEvent.ViewEntry(entry.id)) }
             .padding(6.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -40,24 +43,28 @@ fun EntryCell(
 
 @Composable
 fun ListEntriesScene(
-    entries: List<Entry> = MediaRepository.listEntries(),
-    onEntryClick: (entryId: String) -> Unit = {},
-    onNewEntryButtonClick: () -> Unit = {},
+    filteredByTags: List<String> = emptyList(),
+    offset: Int = 0,
 ) {
-    val visible = entries.take(20)          // max 4 × 5
-    val rows = visible.chunked(4)
+    val maxEntriesPerPage = 20
+    val eventEmitter = LocalEventEmitter.current
+    val entries = MediaRepository.findEntries(EntriesFilter(maxEntriesPerPage, offset, filteredByTags))
+    val rows = entries.chunked(4)
 
-    Box {
-        Button(
-            onClick = onNewEntryButtonClick,
-            content = { Text(text = "+") }
-        )
-    }
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        Button(
+            onClick = { eventEmitter.emit(AppEvent.AddNewEntry) },
+            content = { Text(text = "+") }
+        )
+        TagList(
+            tags = SecureDatabase.listTags() // TODO
+                .sortedByDescending { it.frequency }
+                .map { it.name }
+        )
         rows.forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -65,7 +72,7 @@ fun ListEntriesScene(
             ) {
                 row.forEach { entry ->
                     Box(modifier = Modifier.weight(1f)) {
-                        EntryCell(entry, onEntryClick)
+                        EntryCell(entry)
                     }
                 }
 

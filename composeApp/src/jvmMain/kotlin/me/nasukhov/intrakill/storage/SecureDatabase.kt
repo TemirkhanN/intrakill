@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
+import me.nasukhov.intrakill.content.Tag
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.Statement
@@ -88,34 +89,68 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun listEntries(): List<Entry> {
-        val sql = """
-                SELECT
-                    e.id      AS entry_id,
-                    e.preview AS preview
-                FROM entry e
-                ORDER BY e.created_at DESC
-                LIMIT 20
-            """
-
+    actual fun findEntries(filter: EntriesFilter): List<Entry> {
         val result = mutableListOf<Entry>()
 
+        val hasTags = filter.tags.isNotEmpty()
+
+        val sql = if (!hasTags) {
+            """
+            SELECT e.*
+            FROM entry e
+            ORDER BY e.created_at DESC
+            LIMIT ? OFFSET ?
+        """.trimIndent()
+        } else {
+            val placeholders = filter.tags.joinToString(",") { "?" }
+
+            """
+            SELECT e.*
+            FROM entry e
+            JOIN (
+                SELECT entry_id
+                FROM tags
+                WHERE tag IN ($placeholders)
+                GROUP BY entry_id
+                HAVING COUNT(DISTINCT tag) = ?
+            ) matched ON matched.entry_id = e.id
+            ORDER BY e.created_at DESC
+            LIMIT ? OFFSET ?
+        """.trimIndent()
+        }
+
         db.prepareStatement(sql).use { stmt ->
-            val rs = stmt.executeQuery()
-            while (rs.next()) {
-                val id = rs.getString("entry_id")
-                result.add(
-                    Entry(
-                        id = id,
-                        preview = rs.getBytes("preview"),
-                        attachments = listAttachments(id) // TODO lazy load
+            var index = 1
+
+            if (hasTags) {
+                filter.tags.forEach { tag ->
+                    stmt.setString(index++, tag)
+                }
+                stmt.setInt(index++, filter.tags.size)
+            }
+
+            stmt.setInt(index++, filter.limit)
+            stmt.setInt(index, filter.offset)
+
+            stmt.executeQuery().use { rs ->
+                while (rs.next()) {
+                    val id = rs.getString("id")
+
+                    result.add(
+                        Entry(
+                            id = id,
+                            preview = rs.getBytes("preview"),
+                            attachments = listAttachments(id), // TODO lazy load
+                            tags = listTags(id) // TODO lazy load
+                        )
                     )
-                )
+                }
             }
         }
 
         return result
     }
+
 
     actual fun getById(entryId: String): Entry {
         val sql = """
@@ -135,7 +170,8 @@ actual object SecureDatabase {
             return Entry(
                 id = id,
                 preview = rs.getBytes("preview"),
-                attachments = listAttachments(id)
+                attachments = listAttachments(id),
+                tags = listTags(id)
             )
         }
     }
@@ -160,6 +196,51 @@ actual object SecureDatabase {
                         id = rs.getString("id"),
                     )
                 )
+            }
+        }
+
+        return result
+    }
+
+    actual fun listTags(): List<Tag> {
+        val sql = """
+                SELECT 
+                    tag as name,
+                    COUNT(*) as frequency
+                FROM tags
+                GROUP BY tag
+        """
+
+        val result = mutableListOf<Tag>()
+
+        db.prepareStatement(sql).use { stmt ->
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                result.add(
+                    Tag(
+                        rs.getString("name"),
+                        rs.getInt("frequency"),
+                    ),
+                )
+            }
+        }
+
+        return result
+    }
+
+    private fun listTags(entryId: String): List<String> {
+        val sql = """
+                SELECT * FROM tags
+                WHERE entry_id = ?
+        """
+
+        val result = mutableListOf<String>()
+
+        db.prepareStatement(sql).use { stmt ->
+            stmt.setString(1, entryId)
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                result.add(rs.getString("tag"))
             }
         }
 

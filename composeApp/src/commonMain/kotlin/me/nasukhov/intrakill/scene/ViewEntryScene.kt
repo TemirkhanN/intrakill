@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,41 +23,46 @@ import me.nasukhov.intrakill.content.MediaRepository
 fun ViewEntryScene(entryId: String) {
     val entry = MediaRepository.getById(entryId)
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(entry.attachments) { attachment ->
-            val bitmap = attachment.content.asImageBitmap()
+    Column {
+        TagList(
+            tags = entry.tags
+        )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(entry.attachments) { attachment ->
+                val bitmap = attachment.content.asImageBitmap()
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f), // square, full width
-                contentAlignment = Alignment.Center
-            ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Text("No preview", color = Color.Gray)
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f), // square, full width
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text("No preview", color = Color.Gray)
+                    }
 
-                // Optional video overlay
-                if (entry.id == "video") {
-                    Text(
-                        text = "▶",
-                        color = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .border(1.dp, Color.Black)
-                            .padding(8.dp)
-                    )
+                    // Optional video overlay
+                    if (entry.id == "video") {
+                        Text(
+                            text = "▶",
+                            color = Color.White,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .border(1.dp, Color.Black)
+                                .padding(8.dp)
+                        )
+                    }
                 }
             }
         }
