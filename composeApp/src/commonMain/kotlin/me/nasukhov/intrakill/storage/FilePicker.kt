@@ -1,12 +1,17 @@
 package me.nasukhov.intrakill.storage
 
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import org.jetbrains.skia.Color
+import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
-import java.awt.Color
+import org.jetbrains.skia.Paint
+import org.jetbrains.skia.Rect
+import org.jetbrains.skia.SamplingMode
+import org.jetbrains.skia.Surface
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
+import kotlin.math.min
 
 expect object FilePicker {
     suspend fun pickMultiple(): List<PickedMedia>
@@ -47,25 +52,44 @@ data class PickedMedia(
         bytes: ByteArray,
         maxSize: Int
     ): ByteArray {
-        val img = ImageIO.read(ByteArrayInputStream(bytes))
+        val srcImage = Image.makeFromEncoded(bytes)
+        val scale = min(
+            maxSize.toFloat() / srcImage.width,
+            maxSize.toFloat() / srcImage.height
+        ).coerceAtMost(1f)
 
-        val scale = minOf(
-            maxSize.toDouble() / img.width,
-            maxSize.toDouble() / img.height,
-            1.0
+        val targetWidth = (srcImage.width * scale).toInt()
+        val targetHeight = (srcImage.height * scale).toInt()
+
+        val surface = Surface.makeRasterN32Premul(
+            targetWidth,
+            targetHeight,
         )
 
-        val w = (img.width * scale).toInt()
-        val h = (img.height * scale).toInt()
+        val canvas = surface.canvas
+        canvas.clear(Color.TRANSPARENT)
 
-        val resized = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
-        val g = resized.createGraphics()
-        g.drawImage(img, 0, 0, w, h, null)
-        g.dispose()
+        val paint = Paint().apply {
+            isAntiAlias = true
+        }
 
-        val out = ByteArrayOutputStream()
-        ImageIO.write(resized, "jpg", out)
-        return out.toByteArray()
+        canvas.drawImageRect(
+            image = srcImage,
+            src = Rect.makeWH(srcImage.width.toFloat(), srcImage.height.toFloat()),
+            dst = Rect.makeWH(targetWidth.toFloat(), targetHeight.toFloat()),
+            samplingMode = SamplingMode.LINEAR,
+            paint = paint,
+            strict = true,
+        )
+
+        val resizedImage = surface.makeImageSnapshot()
+
+        val encoded = resizedImage.encodeToData(
+            EncodedImageFormat.JPEG,
+            85
+        ) ?: error("Skia JPEG encoding failed")
+
+        return encoded.bytes
     }
 
     private fun generateGifPreview(
@@ -81,11 +105,11 @@ data class PickedMedia(
         val g = img.createGraphics()
 
         // background
-        g.color = Color(30, 30, 30)
+        g.color = java.awt.Color(30, 30, 30)
         g.fillRect(0, 0, size, size)
 
         // play triangle
-        g.color = Color.WHITE
+        g.color = java.awt.Color.WHITE
         val triangle = intArrayOf(
             size / 3, size / 4,
             size / 3, size * 3 / 4,
