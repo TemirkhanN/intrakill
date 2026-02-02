@@ -43,10 +43,11 @@ actual object SecureDatabase {
     actual fun saveEntry(entry: Entry) {
         db.autoCommit = false
         try {
-            val stmt = db.prepareStatement("INSERT INTO entry(id, preview) VALUES(?, ?)")
+            val stmt = db.prepareStatement("INSERT INTO entry(id, name, preview) VALUES(?, ?, ?)")
             stmt.use {
                 stmt.setString(1, entry.id) // TODO
-                stmt.setBytes(2, entry.preview)
+                stmt.setString(2, entry.name)
+                stmt.setBytes(3, entry.preview) // TODO
                 stmt.executeUpdate()
 
                 // Now insert attachments
@@ -139,6 +140,7 @@ actual object SecureDatabase {
                     result.add(
                         Entry(
                             id = id,
+                            name = rs.getString("name"),
                             preview = rs.getBytes("preview"),
                             attachments = listAttachments(id), // TODO lazy load
                             tags = listTags(id) // TODO lazy load
@@ -155,8 +157,7 @@ actual object SecureDatabase {
     actual fun getById(entryId: String): Entry {
         val sql = """
                 SELECT
-                    e.id      AS entry_id,
-                    e.preview AS preview
+                    e.*
                 FROM entry e
                 WHERE e.id = ?
             """
@@ -166,9 +167,10 @@ actual object SecureDatabase {
             val rs = stmt.executeQuery()
             rs.next()
 
-            val id = rs.getString("entry_id")
+            val id = rs.getString("id")
             return Entry(
                 id = id,
+                name = rs.getString("name"),
                 preview = rs.getBytes("preview"),
                 attachments = listAttachments(id),
                 tags = listTags(id)
@@ -253,10 +255,12 @@ actual object SecureDatabase {
             """
                     CREATE TABLE IF NOT EXISTS entry (
                         id TEXT PRIMARY KEY CHECK(length(id) = $ID_LENGTH),
+                        `name` TEXT NOT NULL,
                         preview BLOB NOT NULL,
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                     );
                     CREATE INDEX IF NOT EXISTS idx_entry_created_at ON entry(created_at);
+                    CREATE INDEX IF NOT EXISTS idx_entry_name ON entry(`name`);
                     """
         )
 

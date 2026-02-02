@@ -33,23 +33,13 @@ fun TagList(
                         selectedTags =
                             if (selected) selectedTags - tag
                             else selectedTags + tag
+
+                        eventEmitter.emit(AppEvent.TagsSelected(selectedTags.toList()))
                     },
                     label = {
                         Text(tag)
                     }
                 )
-            }
-        }
-
-        if (selectedTags.isNotEmpty()) {
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = {
-                    eventEmitter.emit(AppEvent.TagsSelected(selectedTags.toList()))
-                }
-            ) {
-                Text("Find by tags")
             }
         }
     }

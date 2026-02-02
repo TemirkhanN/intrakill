@@ -29,6 +29,7 @@ import me.nasukhov.intrakill.storage.PickedMedia
 fun AddContentScene() {
     var selected by remember { mutableStateOf<List<PickedMedia>>(emptyList()) }
     var tagsInput by remember { mutableStateOf("") }
+    var nameInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -73,6 +74,13 @@ fun AddContentScene() {
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
+            value = nameInput,
+            onValueChange = { nameInput = it.trim() },
+            label = { Text("Name or description") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
             value = tagsInput,
             onValueChange = { tagsInput = it },
             label = { Text("Tags (comma separated)") },
@@ -88,19 +96,20 @@ fun AddContentScene() {
                     .map { it.trim().lowercase() }
                     .filter { it.isNotEmpty() }
 
-                if (selected.isEmpty() || tags.isEmpty()) {
+                if (selected.isEmpty() || tags.isEmpty() || nameInput.isEmpty()) {
                     error = "Select files and enter tags"
                     return@Button
                 }
 
                 val entry = MediaRepository.save(
                     Entry(
-                        preview = selected.first().generateImagePreview(),
+                        name = nameInput,
+                        preview = selected.first().rawPreview,
                         attachments = selected.map {
                             Attachment(
                                 mimeType = it.mimeType,
                                 content = it.bytes,
-                                preview = it.generateImagePreview()
+                                preview = it.rawPreview
                             )
                         },
                         tags = tags,

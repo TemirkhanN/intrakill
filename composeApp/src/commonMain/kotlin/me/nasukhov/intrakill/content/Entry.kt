@@ -1,7 +1,9 @@
 package me.nasukhov.intrakill.content
 
 import me.nasukhov.intrakill.storage.EntriesFilter
+import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.storage.SecureDatabase
+import me.nasukhov.intrakill.storage.mediaKind
 import java.security.MessageDigest
 import java.util.UUID
 
@@ -11,16 +13,19 @@ data class Attachment(
     val preview: ByteArray,
     val id: String = UUID.randomUUID().toString()
 ) {
+    val mediaKind: MediaKind = mimeType.mediaKind()
+
     companion object {
         private val hasher = MessageDigest.getInstance("SHA-256")
     }
 
-    val hashsum by lazy {
+    val hashsum: ByteArray by lazy {
         hasher.digest(content)
     }
 }
 
 data class Entry(
+    val name: String,
     val preview: ByteArray,
     val attachments: List<Attachment>,
     val tags: List<String> = emptyList(),

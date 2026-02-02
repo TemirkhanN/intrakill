@@ -1,7 +1,6 @@
 package me.nasukhov.intrakill.scene
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.content.MediaRepository
+import me.nasukhov.intrakill.storage.MediaKind
 
 @Composable
 fun ViewEntryScene(entryId: String) {
@@ -34,34 +34,31 @@ fun ViewEntryScene(entryId: String) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(entry.attachments) { attachment ->
-                val bitmap = attachment.content.asImageBitmap()
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f), // square, full width
                     contentAlignment = Alignment.Center
                 ) {
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text("No preview", color = Color.Gray)
-                    }
-
-                    // Optional video overlay
-                    if (entry.id == "video") {
-                        Text(
-                            text = "▶",
-                            color = Color.White,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .border(1.dp, Color.Black)
-                                .padding(8.dp)
-                        )
+                    when (attachment.mediaKind) {
+                        MediaKind.VIDEO -> {
+                            // TODO
+                            Image(
+                                bitmap = attachment.preview.asImageBitmap(),
+                                contentDescription = "TODO",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        MediaKind.IMAGE -> {
+                            Image(
+                                bitmap = attachment.content.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        else -> {
+                            Text("No preview", color = Color.Gray)
+                        }
                     }
                 }
             }
