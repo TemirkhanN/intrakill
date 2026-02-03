@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        SecureDatabase.init(applicationContext)
+        SecureDatabase.init(this)
 
         setContent {
             App()

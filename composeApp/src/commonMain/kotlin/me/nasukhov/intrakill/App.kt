@@ -5,7 +5,7 @@ import me.nasukhov.intrakill.scene.AddContentScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
 import me.nasukhov.intrakill.scene.LoginScene
 import me.nasukhov.intrakill.scene.ViewEntryScene
-
+import me.nasukhov.intrakill.storage.ProvideFilePicker
 
 sealed interface AppEvent {
     object LoginSucceeded : AppEvent
@@ -20,16 +20,18 @@ sealed interface AppEvent {
 fun App() {
     val appState = remember { AppState() }
 
-    CompositionLocalProvider(
-        LocalEventEmitter provides EventEmitter { event ->
-            appState.handle(event)
-        }
-    ) {
-        when (val currentScene = appState.currentScene) {
-            Scene.Login -> LoginScene()
-            is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
-            Scene.NewEntry -> AddContentScene()
-            is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
+    ProvideFilePicker {
+        CompositionLocalProvider(
+            LocalEventEmitter provides EventEmitter { event ->
+                appState.handle(event)
+            }
+        ) {
+            when (val currentScene = appState.currentScene) {
+                Scene.Login -> LoginScene()
+                is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
+                Scene.NewEntry -> AddContentScene()
+                is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
+            }
         }
     }
 }
