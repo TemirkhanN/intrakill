@@ -1,12 +1,16 @@
 package me.nasukhov.intrakill.scene
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
@@ -48,40 +52,43 @@ fun ListEntriesScene(
 ) {
     val maxEntriesPerPage = 20
     val eventEmitter = LocalEventEmitter.current
-    val entries = MediaRepository.findEntries(EntriesFilter(maxEntriesPerPage, offset, filteredByTags))
-    val rows = entries.chunked(4)
+    val entries = MediaRepository.findEntries(
+        EntriesFilter(maxEntriesPerPage, offset, filteredByTags)
+    )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Button(
-            onClick = { eventEmitter.emit(AppEvent.AddNewEntry) },
-            content = { Text(text = "+") }
-        )
-        TagList(
-            tags = SecureDatabase.listTags() // TODO
-                .sortedByDescending { it.frequency }
-                .map { it.name }
-        )
-        rows.forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                row.forEach { entry ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        EntryCell(entry)
+    BoxWithConstraints {
+        val columns = if (maxWidth < 600.dp) 1 else 4
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(16.dp)
+        ) {
+
+            // --- Header ---
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(onClick = {
+                        eventEmitter.emit(AppEvent.AddNewEntry)
+                    }) {
+                        Text("+")
                     }
-                }
 
-                // fill empty columns if last row < 4
-                repeat(4 - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
+                    TagList(
+                        tags = SecureDatabase.listTags()
+                            .sortedByDescending { it.frequency }
+                            .map { it.name }
+                    )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+
+            // --- Grid items ---
+            items(entries) { entry ->
+                EntryCell(entry)
+            }
         }
     }
 }
+
