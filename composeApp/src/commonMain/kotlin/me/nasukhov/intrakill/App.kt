@@ -1,6 +1,12 @@
 package me.nasukhov.intrakill
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import me.nasukhov.intrakill.scene.AddContentScene
 import me.nasukhov.intrakill.scene.ImportDbScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
@@ -22,18 +28,24 @@ sealed interface AppEvent {
 fun App() {
     val appState = remember { AppState() }
 
-    ProvideFilePicker {
-        CompositionLocalProvider(
-            LocalEventEmitter provides EventEmitter { event ->
-                appState.handle(event)
-            }
-        ) {
-            when (val currentScene = appState.currentScene) {
-                Scene.Login -> LoginScene()
-                is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
-                Scene.NewEntry -> AddContentScene()
-                is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
-                Scene.ImportDb -> ImportDbScene()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        ProvideFilePicker {
+            CompositionLocalProvider(
+                LocalEventEmitter provides EventEmitter { event ->
+                    appState.handle(event)
+                }
+            ) {
+                when (val currentScene = appState.currentScene) {
+                    Scene.Login -> LoginScene()
+                    is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
+                    Scene.NewEntry -> AddContentScene()
+                    is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
+                    Scene.ImportDb -> ImportDbScene()
+                }
             }
         }
     }
