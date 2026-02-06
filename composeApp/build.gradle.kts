@@ -43,6 +43,10 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.desktop.database.sqlcipher)
+            implementation("io.ktor:ktor-server-core:3.4.0")
+            implementation("io.ktor:ktor-server-netty:3.4.0")
+            //implementation("io.ktor:ktor-client-core:2.3.5")      // commonMain HTTP client
+            //implementation("io.ktor:ktor-client-cio:2.3.5")       // JVM/desktop engine
         }
     }
 }

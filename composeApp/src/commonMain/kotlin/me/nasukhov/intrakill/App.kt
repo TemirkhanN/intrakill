@@ -2,6 +2,7 @@ package me.nasukhov.intrakill
 
 import androidx.compose.runtime.*
 import me.nasukhov.intrakill.scene.AddContentScene
+import me.nasukhov.intrakill.scene.ImportDbScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
 import me.nasukhov.intrakill.scene.LoginScene
 import me.nasukhov.intrakill.scene.ViewEntryScene
@@ -14,6 +15,7 @@ sealed interface AppEvent {
     object AddNewEntry : AppEvent
     object Back : AppEvent
     data class TagsSelected(val tags: List<String>) : AppEvent
+    object ImportRequested: AppEvent
 }
 
 @Composable
@@ -31,6 +33,7 @@ fun App() {
                 is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
                 Scene.NewEntry -> AddContentScene()
                 is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
+                Scene.ImportDb -> ImportDbScene()
             }
         }
     }

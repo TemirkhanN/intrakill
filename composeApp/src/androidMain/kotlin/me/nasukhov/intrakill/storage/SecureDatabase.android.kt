@@ -1,6 +1,8 @@
 package me.nasukhov.intrakill.storage
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Attachment
@@ -37,6 +39,44 @@ actual object SecureDatabase {
     /** Initialize with a context before opening the database */
     fun init(context: Context) {
         helper = DBHelper(context, this::migrate, DB_NAME, DB_VERSION)
+    }
+
+    suspend fun import(
+        sqlDump: String,
+        password: String,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val context = helper!!.ctx
+        try {
+            SQLiteDatabase.loadLibs(context)
+
+            // Delete old DB
+            context.deleteDatabase(DB_NAME)
+
+            val db = SQLiteDatabase.openOrCreateDatabase(
+                context.getDatabasePath(DB_NAME),
+                password,
+                null
+            )
+
+            db.beginTransaction()
+            try {
+                sqlDump
+                    .split(";\n")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .forEach { db.execSQL(it) }
+
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+                db.close()
+            }
+
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
     actual fun open(password: String): Boolean {

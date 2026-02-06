@@ -81,6 +81,16 @@ fun LoginScene() {
                 Text("Unlock Database")
             }
 
+            Button(
+                onClick = {
+                    eventEmitter.emit(AppEvent.ImportRequested)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Import Database")
+            }
+
             Text(
                 text = "Warning: If you forget this password, your data is unrecoverable.",
                 style = MaterialTheme.typography.bodySmall,

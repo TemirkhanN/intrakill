@@ -15,6 +15,12 @@ actual object SecureDatabase {
     private val db: Connection
         get() = connection!!
 
+    fun dumpDatabase(): String {
+        return connection?.let {
+            SqlDumpExporter.dumpDatabase(it)
+        } ?: ""
+    }
+
     actual fun open(password: String): Boolean {
         if (connection != null) {
             throw RuntimeException("Cannot open connection")
@@ -24,7 +30,6 @@ actual object SecureDatabase {
             val url = "jdbc:sqlite:secured.db"
             connection = DriverManager.getConnection(url, null, password).apply {
                 createStatement().use { stmt ->
-                    //stmt.execute("PRAGMA key = '${String(password)}';")
                     stmt.execute("PRAGMA cipher_memory_security = ON;")
 
                     stmt.execute("PRAGMA foreign_keys = ON;")
@@ -294,5 +299,66 @@ actual object SecureDatabase {
                         CREATE INDEX IF NOT EXISTS idx_tags_entry ON tags(entry_id);
                     """
         )
+    }
+}
+
+private object SqlDumpExporter {
+    fun dumpDatabase(conn: Connection): String {
+        val sb = StringBuilder()
+
+        conn.createStatement().use { stmt ->
+            // schema
+            stmt.executeQuery("""
+                SELECT sql FROM sqlite_master
+                WHERE sql IS NOT NULL
+                  AND type IN ('table','index','trigger')
+                  AND name NOT LIKE 'sqlite_%'
+                ORDER BY type='table' DESC
+            """).use { rs ->
+                while (rs.next()) {
+                    sb.append(rs.getString(1)).append(";\n")
+                }
+            }
+
+            // data
+            stmt.executeQuery("""
+                SELECT name FROM sqlite_master
+                WHERE type='table'
+                  AND name NOT LIKE 'sqlite_%'
+            """).use { tables ->
+                while (tables.next()) {
+                    val table = tables.getString(1)
+                    dumpTable(conn, table, sb)
+                }
+            }
+        }
+
+        return sb.toString()
+    }
+
+    private fun dumpTable(conn: Connection, table: String, sb: StringBuilder) {
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT * FROM \"$table\"").use { rs ->
+                val meta = rs.metaData
+                val cols = meta.columnCount
+
+                while (rs.next()) {
+                    sb.append("INSERT INTO \"$table\" VALUES (")
+                    for (i in 1..cols) {
+                        if (i > 1) sb.append(",")
+                        val v = rs.getObject(i)
+                        sb.append(
+                            when (v) {
+                                null -> "NULL"
+                                is ByteArray -> "X'${v.joinToString("") { "%02x".format(it) }}'"
+                                is Number -> v.toString()
+                                else -> "'${v.toString().replace("'", "''")}'"
+                            }
+                        )
+                    }
+                    sb.append(");\n")
+                }
+            }
+        }
     }
 }

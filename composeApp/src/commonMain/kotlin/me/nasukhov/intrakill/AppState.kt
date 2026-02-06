@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 
 sealed interface Scene {
     data object Login : Scene
+    data object ImportDb : Scene
     data class Content(val filteredByTags: List<String> = emptyList()) : Scene
     data object NewEntry : Scene
     data class ViewEntry(val entryId: String) : Scene
@@ -35,6 +36,9 @@ class AppState {
 
             is AppEvent.TagsSelected -> {
                 currentScene = Scene.Content(event.tags)
+            }
+            is AppEvent.ImportRequested -> {
+                currentScene = Scene.ImportDb
             }
 
             is AppEvent.Back -> {}
