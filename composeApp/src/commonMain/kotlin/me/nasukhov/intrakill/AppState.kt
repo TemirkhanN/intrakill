@@ -13,6 +13,8 @@ sealed interface Scene {
 }
 
 class AppState {
+    private val backStack = ArrayDeque<Scene>()
+
     var currentScene by mutableStateOf<Scene>(Scene.Login)
         private set
 
@@ -27,11 +29,11 @@ class AppState {
             }
 
             is AppEvent.AddNewEntry -> {
-                currentScene = Scene.NewEntry
+                push(Scene.NewEntry)
             }
 
             is AppEvent.ViewEntry -> {
-                currentScene = Scene.ViewEntry(event.entryId)
+                push(Scene.ViewEntry(event.entryId))
             }
 
             is AppEvent.TagsSelected -> {
@@ -41,7 +43,20 @@ class AppState {
                 currentScene = Scene.ImportDb
             }
 
-            is AppEvent.Back -> {}
+            is AppEvent.Back -> {
+                pop()
+            }
+        }
+    }
+
+    private fun push(scene: Scene) {
+        backStack.addLast(currentScene)
+        currentScene = scene
+    }
+
+    private fun pop() {
+        if (backStack.isNotEmpty()) {
+            currentScene = backStack.removeLast()
         }
     }
 }

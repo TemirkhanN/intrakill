@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +45,9 @@ fun AddContentScene() {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
+        TextButton(onClick = { eventEmitter.emit(AppEvent.Back) }) {
+            Text("← Cancel")
+        }
         Button(
             onClick = {
                 scope.launch {
