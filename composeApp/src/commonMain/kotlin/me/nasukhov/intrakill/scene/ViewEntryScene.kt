@@ -23,42 +23,42 @@ import me.nasukhov.intrakill.storage.MediaKind
 fun ViewEntryScene(entryId: String) {
     val entry = MediaRepository.getById(entryId)
 
-    Column {
-        TagList(
-            tags = entry.tags
-        )
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(entry.attachments) { attachment ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f), // square, full width
-                    contentAlignment = Alignment.Center
-                ) {
-                    when (attachment.mediaKind) {
-                        MediaKind.VIDEO -> {
-                            // TODO
-                            Image(
-                                bitmap = attachment.preview.asImageBitmap(),
-                                contentDescription = "TODO",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        MediaKind.IMAGE -> {
-                            Image(
-                                bitmap = attachment.content.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        else -> {
-                            Text("No preview", color = Color.Gray)
-                        }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            TagList(
+                tags = entry.tags
+            )
+        }
+        items(entry.attachments) { attachment ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f), // square, full width
+                contentAlignment = Alignment.Center
+            ) {
+                when (attachment.mediaKind) {
+                    MediaKind.VIDEO -> {
+                        // TODO
+                        Image(
+                            bitmap = attachment.preview.asImageBitmap(),
+                            contentDescription = "TODO",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    MediaKind.IMAGE -> {
+                        Image(
+                            bitmap = attachment.content.asImageBitmap(),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    else -> {
+                        Text("No preview", color = Color.Gray)
                     }
                 }
             }
