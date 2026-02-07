@@ -47,7 +47,7 @@ fun EntryCell(entry: Entry) {
 
 @Composable
 fun ListEntriesScene(
-    filteredByTags: List<String> = emptyList(),
+    filteredByTags: Set<String> = emptySet(),
     offset: Int = 0,
 ) {
     val maxEntriesPerPage = 20
@@ -80,6 +80,8 @@ fun ListEntriesScene(
                         tags = SecureDatabase.listTags()
                             .sortedByDescending { it.frequency }
                             .map { it.name }
+                            .toSet(),
+                        highlightedTags = filteredByTags
                     )
                 }
             }

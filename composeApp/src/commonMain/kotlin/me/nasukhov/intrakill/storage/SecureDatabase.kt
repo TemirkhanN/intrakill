@@ -6,7 +6,7 @@ import me.nasukhov.intrakill.content.Tag
 data class EntriesFilter(
     val limit: Int,
     val offset: Int = 0,
-    val tags: List<String> = emptyList()
+    val tags: Set<String> = emptySet()
 )
 
 expect object SecureDatabase {
@@ -16,7 +16,30 @@ expect object SecureDatabase {
 
     fun findEntries(filter: EntriesFilter): List<Entry>
 
-    fun listTags(): List<Tag>
+    fun listTags(): Set<Tag>
 
     fun getById(entryId: String): Entry
+}
+
+class LazyList<T>(
+    loader: () -> List<T>
+) : AbstractList<T>() {
+    private val delegate: List<T> by lazy(loader)
+
+    override val size: Int
+        get() = delegate.size
+
+    override fun get(index: Int): T =
+        delegate[index]
+}
+
+class LazySet<T>(
+    loader: () -> Set<T>
+) : AbstractSet<T>() {
+    private val delegate: Set<T> by lazy(loader)
+
+    override val size: Int
+        get() = delegate.size
+
+    override fun iterator(): Iterator<T> = delegate.iterator()
 }

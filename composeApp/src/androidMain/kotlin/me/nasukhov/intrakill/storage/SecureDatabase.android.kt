@@ -175,8 +175,8 @@ actual object SecureDatabase {
                     id = id,
                     name = c.getString(c.getColumnIndexOrThrow("name")),
                     preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                    attachments = listAttachments(id),
-                    tags = listTags(id)
+                    attachments = LazyList { listAttachments(id) },
+                    tags = LazySet { listTags(id) }
                 )
             }
         }
@@ -196,8 +196,8 @@ actual object SecureDatabase {
                 id = entryId,
                 name = c.getString(c.getColumnIndexOrThrow("name")),
                 preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                attachments = listAttachments(entryId),
-                tags = listTags(entryId)
+                attachments = LazyList { listAttachments(entryId) },
+                tags = LazySet { listTags(entryId) }
             )
         }
     }
@@ -224,9 +224,9 @@ actual object SecureDatabase {
         return result
     }
 
-    actual fun listTags(): List<Tag> {
+    actual fun listTags(): Set<Tag> {
         val db = db ?: error("DB not opened")
-        val result = mutableListOf<Tag>()
+        val result = mutableSetOf<Tag>()
 
         db.rawQuery(
             """
@@ -247,9 +247,9 @@ actual object SecureDatabase {
         return result
     }
 
-    private fun listTags(entryId: String): List<String> {
+    private fun listTags(entryId: String): Set<String> {
         val db = db ?: error("DB not opened")
-        val result = mutableListOf<String>()
+        val result = mutableSetOf<String>()
 
         db.rawQuery(
             "SELECT tag FROM tags WHERE entry_id = ?",

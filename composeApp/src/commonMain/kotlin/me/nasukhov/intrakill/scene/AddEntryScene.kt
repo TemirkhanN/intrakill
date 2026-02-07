@@ -95,6 +95,7 @@ fun AddContentScene() {
                     .split(",")
                     .map { it.trim().lowercase() }
                     .filter { it.isNotEmpty() }
+                    .toSet()
 
                 if (selected.isEmpty() || tags.isEmpty() || nameInput.isEmpty()) {
                     error = "Select files and enter tags"

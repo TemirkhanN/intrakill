@@ -11,11 +11,12 @@ import androidx.compose.foundation.layout.FlowRow
 
 @Composable
 fun TagList(
-    tags: List<String>,
+    tags: Set<String>,
     initiallyVisible: Int = 15,
+    highlightedTags: Set<String> = emptySet()
 ) {
     val eventEmitter = LocalEventEmitter.current
-    var selectedTags by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedTags by remember { mutableStateOf(highlightedTags) }
     var expanded by remember { mutableStateOf(false) }
 
     val visibleTags = if (expanded) tags else tags.take(initiallyVisible)
@@ -36,7 +37,7 @@ fun TagList(
                             if (selected) selectedTags - tag
                             else selectedTags + tag
 
-                        eventEmitter.emit(AppEvent.TagsSelected(selectedTags.toList()))
+                        eventEmitter.emit(AppEvent.TagsSelected(selectedTags))
                     },
                     label = { Text(tag) }
                 )

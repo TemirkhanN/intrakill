@@ -7,7 +7,7 @@ import androidx.compose.runtime.setValue
 sealed interface Scene {
     data object Login : Scene
     data object ImportDb : Scene
-    data class Content(val filteredByTags: List<String> = emptyList()) : Scene
+    data class Content(val filteredByTags: Set<String> = emptySet()) : Scene
     data object NewEntry : Scene
     data class ViewEntry(val entryId: String) : Scene
 }

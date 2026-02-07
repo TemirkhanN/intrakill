@@ -20,7 +20,7 @@ sealed interface AppEvent {
     data class ViewEntry(val entryId: String) : AppEvent
     object AddNewEntry : AppEvent
     object Back : AppEvent
-    data class TagsSelected(val tags: List<String>) : AppEvent
+    data class TagsSelected(val tags: Set<String>) : AppEvent
     object ImportRequested: AppEvent
 }
 

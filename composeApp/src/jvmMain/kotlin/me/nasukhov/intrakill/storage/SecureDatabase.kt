@@ -147,8 +147,8 @@ actual object SecureDatabase {
                             id = id,
                             name = rs.getString("name"),
                             preview = rs.getBytes("preview"),
-                            attachments = listAttachments(id), // TODO lazy load
-                            tags = listTags(id) // TODO lazy load
+                            attachments = LazyList { listAttachments(id) },
+                            tags = LazySet { listTags(id) }
                         )
                     )
                 }
@@ -177,8 +177,8 @@ actual object SecureDatabase {
                 id = id,
                 name = rs.getString("name"),
                 preview = rs.getBytes("preview"),
-                attachments = listAttachments(id),
-                tags = listTags(id)
+                attachments = LazyList { listAttachments(id) },
+                tags = LazySet { listTags(id) }
             )
         }
     }
@@ -209,7 +209,7 @@ actual object SecureDatabase {
         return result
     }
 
-    actual fun listTags(): List<Tag> {
+    actual fun listTags(): Set<Tag> {
         val sql = """
                 SELECT 
                     tag as name,
@@ -218,7 +218,7 @@ actual object SecureDatabase {
                 GROUP BY tag
         """
 
-        val result = mutableListOf<Tag>()
+        val result = mutableSetOf<Tag>()
 
         db.prepareStatement(sql).use { stmt ->
             val rs = stmt.executeQuery()
@@ -235,13 +235,13 @@ actual object SecureDatabase {
         return result
     }
 
-    private fun listTags(entryId: String): List<String> {
+    private fun listTags(entryId: String): Set<String> {
         val sql = """
                 SELECT * FROM tags
                 WHERE entry_id = ?
         """
 
-        val result = mutableListOf<String>()
+        val result = mutableSetOf<String>()
 
         db.prepareStatement(sql).use { stmt ->
             stmt.setString(1, entryId)
@@ -308,24 +308,28 @@ private object SqlDumpExporter {
 
         conn.createStatement().use { stmt ->
             // schema
-            stmt.executeQuery("""
+            stmt.executeQuery(
+                """
                 SELECT sql FROM sqlite_master
                 WHERE sql IS NOT NULL
                   AND type IN ('table','index','trigger')
                   AND name NOT LIKE 'sqlite_%'
                 ORDER BY type='table' DESC
-            """).use { rs ->
+            """
+            ).use { rs ->
                 while (rs.next()) {
                     sb.append(rs.getString(1)).append(";\n")
                 }
             }
 
             // data
-            stmt.executeQuery("""
+            stmt.executeQuery(
+                """
                 SELECT name FROM sqlite_master
                 WHERE type='table'
                   AND name NOT LIKE 'sqlite_%'
-            """).use { tables ->
+            """
+            ).use { tables ->
                 while (tables.next()) {
                     val table = tables.getString(1)
                     dumpTable(conn, table, sb)
