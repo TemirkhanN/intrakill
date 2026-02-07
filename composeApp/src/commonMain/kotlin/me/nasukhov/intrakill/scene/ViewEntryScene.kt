@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,7 +23,10 @@ import me.nasukhov.intrakill.storage.MediaKind
 
 @Composable
 fun ViewEntryScene(entryId: String) {
-    val entry = MediaRepository.getById(entryId)
+    val entry = remember(entryId) {
+        MediaRepository.getById(entryId)
+    }
+
     val eventEmitter = LocalEventEmitter.current
 
     LazyColumn(
