@@ -31,6 +31,7 @@ fun TagList(
                 FilterChip(
                     selected = selected,
                     onClick = {
+                        // TODO is the state of selected refreshed after each click?
                         selectedTags =
                             if (selected) selectedTags - tag
                             else selectedTags + tag

@@ -19,7 +19,7 @@ actual object DbImporter {
             val url = URL("http://$ip:$port/dump")
             (url.openConnection() as HttpURLConnection).run {
                 connectTimeout = 5000
-                readTimeout = 15000
+                readTimeout = 300000
                 inputStream.bufferedReader().use { it.readText() }
             }
         }
