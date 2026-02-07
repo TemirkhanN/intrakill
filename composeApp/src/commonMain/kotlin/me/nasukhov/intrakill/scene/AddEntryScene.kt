@@ -1,10 +1,13 @@
 package me.nasukhov.intrakill.scene
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +27,7 @@ import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.storage.FilePicker
 import me.nasukhov.intrakill.storage.PickedMedia
+import me.nasukhov.intrakill.storage.SecureDatabase
 
 @Composable
 fun AddContentScene() {
@@ -80,11 +84,9 @@ fun AddContentScene() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        OutlinedTextField(
-            value = tagsInput,
-            onValueChange = { tagsInput = it },
-            label = { Text("Tags (comma separated)") },
-            modifier = Modifier.fillMaxWidth()
+        TagsInput(
+            allTags = SecureDatabase.listTags().map { it.name }.toSet(),
+            onTagsChanged = { tagsInput = it.joinToString{","} },
         )
 
         Spacer(Modifier.height(12.dp))
@@ -133,3 +135,73 @@ fun AddContentScene() {
         }
     }
 }
+
+@Composable
+fun TagsInput(
+    allTags: Set<String>,
+    modifier: Modifier = Modifier,
+    onTagsChanged: (Set<String>) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+
+    val parts = text.split(",").map { it.trim() }
+    val currentPrefix = parts.lastOrNull().orEmpty()
+
+    val suggestions = remember(currentPrefix, allTags) {
+        if (currentPrefix.isBlank()) emptyList()
+        else allTags.filter {
+            it.startsWith(currentPrefix, ignoreCase = true) && !parts.contains(it)
+        }
+    }
+
+    Column(modifier) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                onTagsChanged(
+                    it.split(",")
+                        .map { s -> s.trim() }
+                        .filter { s -> s.isNotEmpty() }
+                        .toSet()
+                )
+            },
+            label = { Text("Tags (comma separated)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (suggestions.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                suggestions.take(6).forEach { tag ->
+                    Text(
+                        text = tag,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val newText =
+                                    parts.dropLast(1)
+                                        .plus(tag)
+                                        .joinToString(", ") + ", "
+
+                                text = newText
+                                onTagsChanged(
+                                    newText.split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotEmpty() }
+                                        .toSet()
+                                )
+                            }
+                            .padding(12.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
