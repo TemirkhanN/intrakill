@@ -15,6 +15,7 @@ expect object SecureDatabase {
     fun saveEntry(entry: Entry)
 
     fun findEntries(filter: EntriesFilter): List<Entry>
+    fun countEntries(filter: EntriesFilter): Int
 
     fun listTags(): Set<Tag>
 

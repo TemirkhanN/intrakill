@@ -95,6 +95,46 @@ actual object SecureDatabase {
         }
     }
 
+    actual fun countEntries(filter: EntriesFilter): Int {
+        val hasTags = filter.tags.isNotEmpty()
+
+        val sql = if (!hasTags) {
+            """
+        SELECT COUNT(*)
+        FROM entry e
+        """.trimIndent()
+        } else {
+            val placeholders = filter.tags.joinToString(",") { "?" }
+
+            """
+        SELECT COUNT(DISTINCT e.id)
+        FROM entry e
+        JOIN (
+            SELECT entry_id
+            FROM tags
+            WHERE tag IN ($placeholders)
+            GROUP BY entry_id
+            HAVING COUNT(DISTINCT tag) = ?
+        ) matched ON matched.entry_id = e.id
+        """.trimIndent()
+        }
+
+        db.prepareStatement(sql).use { stmt ->
+            var index = 1
+
+            if (hasTags) {
+                filter.tags.forEach { tag ->
+                    stmt.setString(index++, tag)
+                }
+                stmt.setInt(index, filter.tags.size)
+            }
+
+            stmt.executeQuery().use { rs ->
+                return if (rs.next()) rs.getInt(1) else 0
+            }
+        }
+    }
+
     actual fun findEntries(filter: EntriesFilter): List<Entry> {
         val result = mutableListOf<Entry>()
 

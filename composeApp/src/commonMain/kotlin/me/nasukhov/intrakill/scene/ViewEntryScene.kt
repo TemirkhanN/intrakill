@@ -15,12 +15,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.nasukhov.intrakill.AppEvent
+import me.nasukhov.intrakill.LocalEventEmitter
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.storage.MediaKind
 
 @Composable
 fun ViewEntryScene(entryId: String) {
     val entry = MediaRepository.getById(entryId)
+    val eventEmitter = LocalEventEmitter.current
 
     LazyColumn(
         modifier = Modifier
@@ -30,14 +33,17 @@ fun ViewEntryScene(entryId: String) {
     ) {
         item {
             TagList(
-                tags = entry.tags
+                tags = entry.tags,
+                onTagsChanged = {
+                    eventEmitter.emit(AppEvent.TagsSelected(it))
+                }
             )
         }
         items(entry.attachments) { attachment ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f), // square, full width
+                    .aspectRatio(1f),
                 contentAlignment = Alignment.Center
             ) {
                 when (attachment.mediaKind) {

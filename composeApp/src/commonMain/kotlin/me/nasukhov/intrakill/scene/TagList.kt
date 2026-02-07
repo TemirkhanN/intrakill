@@ -1,30 +1,28 @@
 package me.nasukhov.intrakill.scene
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.nasukhov.intrakill.AppEvent
-import me.nasukhov.intrakill.LocalEventEmitter
-import androidx.compose.foundation.layout.FlowRow
 
 @Composable
 fun TagList(
     tags: Set<String>,
+    selectedTags: Set<String> = emptySet(),
+    onTagsChanged: (Set<String>) -> Unit,
     initiallyVisible: Int = 15,
-    highlightedTags: Set<String> = emptySet()
 ) {
-    val eventEmitter = LocalEventEmitter.current
-    var selectedTags by remember { mutableStateOf(highlightedTags) }
     var expanded by remember { mutableStateOf(false) }
 
     val visibleTags = if (expanded) tags else tags.take(initiallyVisible)
 
     Column(modifier = Modifier.fillMaxWidth()) {
+
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             visibleTags.forEach { tag ->
                 val selected = tag in selectedTags
@@ -32,12 +30,11 @@ fun TagList(
                 FilterChip(
                     selected = selected,
                     onClick = {
-                        // TODO is the state of selected refreshed after each click?
-                        selectedTags =
+                        val updated =
                             if (selected) selectedTags - tag
                             else selectedTags + tag
 
-                        eventEmitter.emit(AppEvent.TagsSelected(selectedTags))
+                        onTagsChanged(updated)
                     },
                     label = { Text(tag) }
                 )
@@ -45,12 +42,13 @@ fun TagList(
         }
 
         if (tags.size > initiallyVisible) {
-            ElevatedFilterChip(
-                onClick = { expanded = !expanded },
-                selected = false,
-                elevation = FilterChipDefaults.elevatedFilterChipElevation(elevation = 8.dp),
-                label = { Text(if (expanded) "less tags" else "more tags") },
-            )
+            Spacer(Modifier.height(8.dp))
+
+            TextButton(
+                onClick = { expanded = !expanded }
+            ) {
+                Text(if (expanded) "less tags" else "more tags")
+            }
         }
     }
 }

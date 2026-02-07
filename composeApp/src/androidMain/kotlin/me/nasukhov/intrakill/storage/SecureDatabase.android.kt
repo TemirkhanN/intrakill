@@ -132,24 +132,24 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun findEntries(filter: EntriesFilter): List<Entry> {
+    actual fun countEntries(filter: EntriesFilter): Int {
         val db = db ?: error("DB not opened")
-        val result = mutableListOf<Entry>()
 
         val args = mutableListOf<String>()
-        val sql = if (filter.tags.isEmpty()) {
+        val hasTags = filter.tags.isNotEmpty()
+
+        val sql = if (!hasTags) {
             """
-            SELECT * FROM entry
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            """.trimIndent().also {
-                args += filter.limit.toString()
-                args += filter.offset.toString()
-            }
+        SELECT COUNT(*) 
+        FROM entry
+        """.trimIndent()
         } else {
             val placeholders = filter.tags.joinToString(",") { "?" }
+
             """
-            SELECT e.*
+        SELECT COUNT(*) 
+        FROM (
+            SELECT e.id
             FROM entry e
             JOIN (
                 SELECT entry_id
@@ -157,10 +157,58 @@ actual object SecureDatabase {
                 WHERE tag IN ($placeholders)
                 GROUP BY entry_id
                 HAVING COUNT(DISTINCT tag) = ?
-            ) t ON t.entry_id = e.id
+            ) matched ON matched.entry_id = e.id
+        )
+        """.trimIndent().also {
+                args += filter.tags
+                args += filter.tags.size.toString()
+            }
+        }
+
+        db.rawQuery(sql, args.toTypedArray()).use { c ->
+            return if (c.moveToFirst()) c.getInt(0) else 0
+        }
+    }
+
+    actual fun findEntries(filter: EntriesFilter): List<Entry> {
+        val db = db ?: error("DB not opened")
+        val result = mutableListOf<Entry>()
+
+        val args = mutableListOf<String>()
+        val hasTags = filter.tags.isNotEmpty()
+
+        val sql = if (!hasTags) {
+            """
+            SELECT 
+                e.id AS entry_id,
+                e.name,
+                e.preview
+            FROM entry e
             ORDER BY e.created_at DESC
             LIMIT ? OFFSET ?
-            """.trimIndent().also {
+        """.trimIndent().also {
+                args += filter.limit.toString()
+                args += filter.offset.toString()
+            }
+        } else {
+            val placeholders = filter.tags.joinToString(",") { "?" }
+
+            """
+            SELECT 
+                e.id AS entry_id,
+                e.name,
+                e.preview
+            FROM entry e
+            JOIN (
+                SELECT entry_id
+                FROM tags
+                WHERE tag IN ($placeholders)
+                GROUP BY entry_id
+                HAVING COUNT(DISTINCT tag) = ?
+            ) matched ON matched.entry_id = e.id
+            ORDER BY e.created_at DESC
+            LIMIT ? OFFSET ?
+        """.trimIndent().also {
                 args += filter.tags
                 args += filter.tags.size.toString()
                 args += filter.limit.toString()
@@ -169,12 +217,17 @@ actual object SecureDatabase {
         }
 
         db.rawQuery(sql, args.toTypedArray()).use { c ->
+            val idCol = c.getColumnIndexOrThrow("entry_id")
+            val nameCol = c.getColumnIndexOrThrow("name")
+            val previewCol = c.getColumnIndexOrThrow("preview")
+
             while (c.moveToNext()) {
-                val id = c.getString(c.getColumnIndexOrThrow("id"))
+                val id = c.getString(idCol)
+
                 result += Entry(
                     id = id,
-                    name = c.getString(c.getColumnIndexOrThrow("name")),
-                    preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
+                    name = c.getString(nameCol),
+                    preview = c.getBlob(previewCol),
                     attachments = LazyList { listAttachments(id) },
                     tags = LazySet { listTags(id) }
                 )
@@ -183,6 +236,7 @@ actual object SecureDatabase {
 
         return result
     }
+
 
     actual fun getById(entryId: String): Entry {
         val db = db ?: error("DB not opened")

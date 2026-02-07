@@ -29,6 +29,8 @@ data class Entry(
     val id: String = UUID.randomUUID().toString()
 )
 
+data class EntriesSearchResult(val entries: List<Entry>, val outOfTotal: Int)
+
 object MediaRepository {
 
     fun save(entry: Entry): Entry {
@@ -38,7 +40,12 @@ object MediaRepository {
     }
 
     // TODO not really clean, but so far so good
-    fun findEntries(filter: EntriesFilter): List<Entry>  = SecureDatabase.findEntries(filter)
+    fun findEntries(filter: EntriesFilter): EntriesSearchResult {
+        return EntriesSearchResult(
+            SecureDatabase.findEntries(filter),
+            SecureDatabase.countEntries(filter),
+        )
+    }
 
     fun getById(entryId: String): Entry = SecureDatabase.getById(entryId)
 }
