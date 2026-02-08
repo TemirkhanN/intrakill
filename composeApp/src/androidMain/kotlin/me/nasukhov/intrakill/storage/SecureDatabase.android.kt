@@ -131,91 +131,77 @@ actual object SecureDatabase {
             db.endTransaction()
         }
     }
-
     actual fun countEntries(filter: EntriesFilter): Int {
         val db = db ?: error("DB not opened")
-
         val args = mutableListOf<String>()
-        val hasTags = filter.tags.isNotEmpty()
 
-        val sql = if (!hasTags) {
-            """
-        SELECT COUNT(*) 
-        FROM entry
-        """.trimIndent()
+        val sql = if (filter.tags.isEmpty()) {
+            "SELECT COUNT(*) FROM entry"
         } else {
             val placeholders = filter.tags.joinToString(",") { "?" }
+            val tagCount = filter.tags.size
 
             """
         SELECT COUNT(*) 
-        FROM (
-            SELECT e.id
-            FROM entry e
-            JOIN (
-                SELECT entry_id
-                FROM tags
-                WHERE tag IN ($placeholders)
-                GROUP BY entry_id
-                HAVING COUNT(DISTINCT tag) = ?
-            ) matched ON matched.entry_id = e.id
-        )
+        FROM entry e
+        WHERE (
+            SELECT COUNT(DISTINCT t.tag)
+            FROM tags t
+            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
+        ) = $tagCount
         """.trimIndent().also {
-                args += filter.tags
-                args += filter.tags.size.toString()
+                filter.tags.forEach { args.add(it) }
             }
         }
 
-        db.rawQuery(sql, args.toTypedArray()).use { c ->
-            return if (c.moveToFirst()) c.getInt(0) else 0
+        return db.rawQuery(sql, args.toTypedArray()).use { c ->
+            if (c.moveToFirst()) c.getInt(0) else 0
         }
     }
 
     actual fun findEntries(filter: EntriesFilter): List<Entry> {
         val db = db ?: error("DB not opened")
         val result = mutableListOf<Entry>()
-
         val args = mutableListOf<String>()
-        val hasTags = filter.tags.isNotEmpty()
 
-        val sql = if (!hasTags) {
+        val sql = if (filter.tags.isEmpty()) {
             """
-            SELECT 
-                e.id AS entry_id,
-                e.name,
-                e.preview
-            FROM entry e
-            ORDER BY e.created_at DESC
-            LIMIT ? OFFSET ?
+        SELECT id AS entry_id, name, preview 
+        FROM entry 
+        ORDER BY created_at DESC 
+        LIMIT ? OFFSET ?
         """.trimIndent().also {
-                args += filter.limit.toString()
-                args += filter.offset.toString()
+                args.add(filter.limit.toString())
+                args.add(filter.offset.toString())
             }
         } else {
+            // Since tags is a Set, we don't need .distinct()
             val placeholders = filter.tags.joinToString(",") { "?" }
+            val tagCount = filter.tags.size
 
             """
-            SELECT 
-                e.id AS entry_id,
-                e.name,
-                e.preview
-            FROM entry e
-            JOIN (
-                SELECT entry_id
-                FROM tags
-                WHERE tag IN ($placeholders)
-                GROUP BY entry_id
-                HAVING COUNT(DISTINCT tag) = ?
-            ) matched ON matched.entry_id = e.id
-            ORDER BY e.created_at DESC
-            LIMIT ? OFFSET ?
+        SELECT 
+            e.id AS entry_id, 
+            e.name, 
+            e.preview
+        FROM entry e
+        WHERE (
+            SELECT COUNT(DISTINCT t.tag)
+            FROM tags t
+            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
+        ) = $tagCount
+        ORDER BY e.created_at DESC
+        LIMIT ? OFFSET ?
         """.trimIndent().also {
-                args += filter.tags
-                args += filter.tags.size.toString()
-                args += filter.limit.toString()
-                args += filter.offset.toString()
+                // Add tags for the IN clause
+                filter.tags.forEach { args.add(it) }
+                // Add pagination
+                args.add(filter.limit.toString())
+                args.add(filter.offset.toString())
             }
         }
 
+        // rawQuery returns a cursor that must be closed (handled by .use)
         db.rawQuery(sql, args.toTypedArray()).use { c ->
             val idCol = c.getColumnIndexOrThrow("entry_id")
             val nameCol = c.getColumnIndexOrThrow("name")
@@ -224,12 +210,14 @@ actual object SecureDatabase {
             while (c.moveToNext()) {
                 val id = c.getString(idCol)
 
-                result += Entry(
-                    id = id,
-                    name = c.getString(nameCol),
-                    preview = c.getBlob(previewCol),
-                    attachments = LazyList { listAttachments(id) },
-                    tags = LazySet { listTags(id) }
+                result.add(
+                    Entry(
+                        id = id,
+                        name = c.getString(nameCol),
+                        preview = c.getBlob(previewCol),
+                        attachments = LazyList { listAttachments(id) },
+                        tags = LazySet { listTags(id) }
+                    )
                 )
             }
         }
