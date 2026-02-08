@@ -15,9 +15,9 @@ object DbExporter {
         server = embeddedServer(Netty, port = port) {
             routing {
                 get("/dump") {
-                    // Ktor 3.4 uses call.respondFile or static content
-
-                    call.respondText { SecureDatabase.dumpDatabase() }
+                    call.respondOutputStream {
+                        SecureDatabase.dumpDatabase(this)
+                    }
                 }
             }
         }.start(wait = false)

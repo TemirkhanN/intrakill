@@ -3,6 +3,8 @@ package me.nasukhov.intrakill.storage
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.Statement
@@ -15,10 +17,10 @@ actual object SecureDatabase {
     private val db: Connection
         get() = connection!!
 
-    fun dumpDatabase(): String {
-        return connection?.let {
-            SqlDumpExporter.dumpDatabase(it)
-        } ?: ""
+    fun dumpDatabase(output: OutputStream) {
+        connection?.let {
+            SqlDumpExporter.dumpDatabase(it, output)
+        }
     }
 
     actual fun open(password: String): Boolean {
@@ -343,64 +345,114 @@ actual object SecureDatabase {
 }
 
 private object SqlDumpExporter {
-    fun dumpDatabase(conn: Connection): String {
-        val sb = StringBuilder()
+    fun dumpDatabase(conn: Connection, out: OutputStream) {
+        OutputStreamWriter(out, Charsets.UTF_8).use { writer ->
+            writer.append("-- SQLite dump\n")
+            writer.append("PRAGMA foreign_keys=OFF;\n")
 
+            dumpSchema(conn, writer)
+            dumpData(conn, writer)
+
+            writer.flush()
+        }
+    }
+
+    private fun dumpSchema(conn: Connection, out: Appendable) {
         conn.createStatement().use { stmt ->
-            // schema
             stmt.executeQuery(
                 """
-                SELECT sql FROM sqlite_master
-                WHERE sql IS NOT NULL
-                  AND type IN ('table','index','trigger')
-                  AND name NOT LIKE 'sqlite_%'
-                ORDER BY type='table' DESC
-            """
+            SELECT sql
+            FROM sqlite_master
+            WHERE sql IS NOT NULL
+              AND type IN ('table','index','trigger')
+              AND name NOT LIKE 'sqlite_%'
+            ORDER BY type='table' DESC, name
+            """.trimIndent()
             ).use { rs ->
                 while (rs.next()) {
-                    sb.append(rs.getString(1)).append(";\n")
-                }
-            }
-
-            // data
-            stmt.executeQuery(
-                """
-                SELECT name FROM sqlite_master
-                WHERE type='table'
-                  AND name NOT LIKE 'sqlite_%'
-            """
-            ).use { tables ->
-                while (tables.next()) {
-                    val table = tables.getString(1)
-                    dumpTable(conn, table, sb)
+                    out.append(rs.getString(1))
+                    out.append(";\n")
                 }
             }
         }
-
-        return sb.toString()
     }
 
-    private fun dumpTable(conn: Connection, table: String, sb: StringBuilder) {
+    private fun dumpData(conn: Connection, out: Appendable) {
         conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT * FROM \"$table\"").use { rs ->
+            stmt.executeQuery(
+                """
+            SELECT name
+            FROM sqlite_master
+            WHERE type='table'
+              AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """.trimIndent()
+            ).use { rs ->
+                while (rs.next()) {
+                    val table = rs.getString(1)
+                    dumpTable(conn, table, out)
+                }
+            }
+        }
+    }
+
+    private fun dumpTable(
+        conn: Connection,
+        table: String,
+        out: Appendable
+    ) {
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("""SELECT * FROM "$table"""").use { rs ->
                 val meta = rs.metaData
                 val cols = meta.columnCount
 
                 while (rs.next()) {
-                    sb.append("INSERT INTO \"$table\" VALUES (")
+                    out.append("""INSERT INTO "$table" VALUES (""")
+
                     for (i in 1..cols) {
-                        if (i > 1) sb.append(",")
-                        val v = rs.getObject(i)
-                        sb.append(
-                            when (v) {
-                                null -> "NULL"
-                                is ByteArray -> "X'${v.joinToString("") { "%02x".format(it) }}'"
-                                is Number -> v.toString()
-                                else -> "'${v.toString().replace("'", "''")}'"
+                        if (i > 1) out.append(',')
+
+                        when (meta.getColumnType(i)) {
+                            java.sql.Types.BLOB -> {
+                                val bytes = rs.getBytes(i)
+                                if (bytes == null) {
+                                    out.append("NULL")
+                                } else {
+                                    out.append("X'")
+                                    for (b in bytes) {
+                                        out.append(
+                                            ((b.toInt() and 0xFF) + 0x100)
+                                                .toString(16)
+                                                .substring(1)
+                                        )
+                                    }
+                                    out.append("'")
+                                }
                             }
-                        )
+
+                            java.sql.Types.INTEGER,
+                            java.sql.Types.REAL,
+                            java.sql.Types.FLOAT,
+                            java.sql.Types.DOUBLE,
+                            java.sql.Types.NUMERIC -> {
+                                val v = rs.getString(i)
+                                out.append(v ?: "NULL")
+                            }
+
+                            else -> {
+                                val v = rs.getString(i)
+                                if (v == null) {
+                                    out.append("NULL")
+                                } else {
+                                    out.append('\'')
+                                    out.append(v.replace("'", "''"))
+                                    out.append('\'')
+                                }
+                            }
+                        }
                     }
-                    sb.append(");\n")
+
+                    out.append(");\n")
                 }
             }
         }

@@ -10,12 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
@@ -26,45 +26,81 @@ fun ImportDbScene() {
     var ip by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    val eventEmitter = LocalEventEmitter.current
+    var isInProgress by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    val eventEmitter = LocalEventEmitter.current
+    val scope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxWidth()
+    ) {
         OutlinedTextField(
             value = ip,
             onValueChange = { ip = it },
             label = { Text("Desktop IP") },
+            enabled = !isInProgress,
             modifier = Modifier.fillMaxWidth()
         )
 
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("password") },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            enabled = !isInProgress,
             modifier = Modifier.fillMaxWidth()
         )
 
-        Button(onClick = {
-            error = null
-            CoroutineScope(Dispatchers.Main).launch {
-                val success = DbImporter.importDatabase(ip=ip, password=password)
-                if (!success) {
-                    error = "Failed to download database"
-                    return@launch
+        Button(
+            onClick = {
+                if (isInProgress) return@Button
+
+                isInProgress = true
+                error = null
+
+                scope.launch {
+                    val success = try {
+                        DbImporter.importDatabase(
+                            ip = ip.trim(),
+                            password = password
+                        )
+                    } catch (e: Exception) {
+                        error = e.message ?: "Error on during importing"
+                        false
+                    }
+
+                    isInProgress = false
+
+                    if (!success) {
+                        error = "Failed to import database"
+                    } else {
+                        eventEmitter.emit(AppEvent.Logout)
+                    }
                 }
-
-                eventEmitter.emit(AppEvent.Logout)
-
-            }
-        }) {
-            Text("Import Database")
+            },
+            enabled = !isInProgress,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (isInProgress) "Importing…" else "Import Database")
         }
 
-        Button(onClick = {
-            eventEmitter.emit(AppEvent.Logout)
-        }) {
+        Button(
+            onClick = { eventEmitter.emit(AppEvent.Logout) },
+            enabled = !isInProgress,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Back")
         }
 
-        error?.let { Text(it, color = Color.Red) }
+        error?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 }
+
