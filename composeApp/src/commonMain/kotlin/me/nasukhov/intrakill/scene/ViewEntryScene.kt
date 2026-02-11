@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
@@ -50,31 +51,36 @@ fun ViewEntryScene(entryId: String) {
                 }
             )
         }
+
         items(entry.attachments) { attachment ->
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
             ) {
                 when (attachment.mediaKind) {
-                    MediaKind.VIDEO -> {
-                        // TODO
-                        Image(
-                            bitmap = attachment.preview.asImageBitmap(),
-                            contentDescription = "TODO",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
                     MediaKind.IMAGE -> {
                         Image(
                             bitmap = attachment.content.asImageBitmap(),
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxWidth(),
+                            contentScale = ContentScale.FillWidth
                         )
                     }
+                    MediaKind.VIDEO -> {
+                        Box(modifier = Modifier.aspectRatio(1f)) {
+                            Image(
+                                bitmap = attachment.preview.asImageBitmap(),
+                                contentDescription = "Video Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
                     else -> {
-                        Text("No preview", color = Color.Gray)
+                        Box(modifier = Modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
+                            Text("No preview", color = Color.Gray)
+                        }
                     }
                 }
             }
