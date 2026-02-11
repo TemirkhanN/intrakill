@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.nasukhov.intrakill.Security
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -11,23 +12,38 @@ actual object DbImporter {
     actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean =
         withContext(Dispatchers.IO) {
             try {
-                val url = URL("http://$ip:$port/db")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 5000
-                connection.readTimeout = 15000
-                connection.requestMethod = "GET"
+                val url = URL("http://$ip:$port/dump")
 
-                if (connection.responseCode != 200) return@withContext false
+                val token = Security.hash(password)
 
-                val input = connection.inputStream
-                val targetFile = DbFileResolver.resolve("secured.db")
-                targetFile.outputStream().use { output ->
-                    input.copyTo(output)
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 5000
+                    readTimeout = 300000
+                    requestMethod = "GET"
+
+                    setRequestProperty("Authorization", token)
                 }
 
-                true
+                when (connection.responseCode) {
+                    HttpURLConnection.HTTP_OK -> {
+                        val targetFile = DbFileResolver.resolve("secured.db")
+                        connection.inputStream.use { input ->
+                            targetFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        true
+                    }
+                    HttpURLConnection.HTTP_FORBIDDEN -> {
+                        println("Import failed: Incorrect password/token rejected by server.")
+                        false
+                    }
+                    else -> {
+                        println("Import failed: Server returned ${connection.responseCode}")
+                        false
+                    }
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
                 false
             }
         }

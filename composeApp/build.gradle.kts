@@ -16,6 +16,10 @@ kotlin {
         }
     }
 
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     jvm()
 
     sourceSets {
@@ -35,6 +39,7 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.jbcrypt)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

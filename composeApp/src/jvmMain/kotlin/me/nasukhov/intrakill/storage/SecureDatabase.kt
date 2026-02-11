@@ -43,7 +43,7 @@ actual object SecureDatabase {
             }
 
             // TODO not the right place for it
-            DbExporter.start()
+            DbExporter.start(password)
             true
         } catch (e: Exception) {
             false
