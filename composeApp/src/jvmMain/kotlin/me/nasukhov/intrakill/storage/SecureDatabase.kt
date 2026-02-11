@@ -41,6 +41,9 @@ actual object SecureDatabase {
                     migrate(stmt)
                 }
             }
+
+            // TODO not the right place for it
+            DbExporter.start()
             true
         } catch (e: Exception) {
             false
