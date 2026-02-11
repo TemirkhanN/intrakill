@@ -1,87 +1,64 @@
 package me.nasukhov.intrakill.scene
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
+import me.nasukhov.intrakill.component.AttachmentView
+import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
-import me.nasukhov.intrakill.storage.MediaKind
 
 @Composable
 fun ViewEntryScene(entryId: String) {
-    val entry = remember(entryId) {
-        MediaRepository.getById(entryId)
-    }
-
     val eventEmitter = LocalEventEmitter.current
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            TextButton(onClick = { eventEmitter.emit(AppEvent.Back) }) {
-                Text("← Back")
-            }
-        }
+    val entryState = produceState<Entry?>(initialValue = null, key1 = entryId) {
+        value = MediaRepository.getById(entryId)
+    }
 
-        item {
-            TagList(
-                tags = entry.tags,
-                onTagsChanged = {
-                    eventEmitter.emit(AppEvent.TagsSelected(it))
-                }
-            )
-        }
+    val entry = entryState.value
 
-        items(entry.attachments) { attachment ->
+    Crossfade(targetState = entry) { currentEntry ->
+        if (currentEntry == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                when (attachment.mediaKind) {
-                    MediaKind.IMAGE -> {
-                        Image(
-                            bitmap = attachment.content.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxWidth(),
-                            contentScale = ContentScale.FillWidth
-                        )
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    TextButton(onClick = { eventEmitter.emit(AppEvent.Back) }) {
+                        Text("← Back")
                     }
-                    MediaKind.VIDEO -> {
-                        Box(modifier = Modifier.aspectRatio(1f)) {
-                            Image(
-                                bitmap = attachment.preview.asImageBitmap(),
-                                contentDescription = "Video Preview",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                }
+
+                item {
+                    TagList(
+                        tags = currentEntry.tags,
+                        onTagsChanged = {
+                            eventEmitter.emit(AppEvent.TagsSelected(it))
                         }
-                    }
-                    else -> {
-                        Box(modifier = Modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
-                            Text("No preview", color = Color.Gray)
-                        }
-                    }
+                    )
+                }
+
+                items(currentEntry.attachments) { attachment ->
+                    AttachmentView(attachment)
                 }
             }
         }

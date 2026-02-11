@@ -1,5 +1,7 @@
 package me.nasukhov.intrakill.content
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.storage.SecureDatabase
@@ -40,14 +42,14 @@ object MediaRepository {
     }
 
     // TODO not really clean, but so far so good
-    fun findEntries(filter: EntriesFilter): EntriesSearchResult {
-        return EntriesSearchResult(
+    suspend fun findEntries(filter: EntriesFilter): EntriesSearchResult = withContext(Dispatchers.IO) {
+        EntriesSearchResult(
             SecureDatabase.findEntries(filter),
             SecureDatabase.countEntries(filter),
         )
     }
 
-    fun getById(entryId: String): Entry = SecureDatabase.getById(entryId)
+    suspend fun getById(entryId: String): Entry  = withContext(Dispatchers.IO) {SecureDatabase.getById(entryId)}
 }
 
 data class Tag(

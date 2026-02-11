@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
+import me.nasukhov.intrakill.content.EntriesSearchResult
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.storage.EntriesFilter
@@ -49,78 +50,106 @@ fun ListEntriesScene(
     var selectedTags by remember { mutableStateOf(initialTags) }
     var offset by remember { mutableStateOf(initialOffset) }
 
-    val searchResult = remember(selectedTags, offset) {
-        MediaRepository.findEntries(
-            EntriesFilter(
-                limit = maxEntriesPerPage,
-                offset = offset,
-                tags = selectedTags
-            )
+    // Use produceState to manage the query. Remember introduces lag, and combined with BoxWithConstraint recomputation
+    // duplicates the request.
+    val searchResultState = produceState<EntriesSearchResult?>(
+        initialValue = null,
+        key1 = selectedTags,
+        key2 = offset
+    ) {
+        value = MediaRepository.findEntries(
+            EntriesFilter(limit = maxEntriesPerPage, offset = offset, tags = selectedTags)
         )
     }
 
-    BoxWithConstraints {
-        val columns = if (maxWidth < 600.dp) 1 else 4
+    val searchResult = searchResultState.value
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(16.dp)
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints {
+            val columns = if (maxWidth < 600.dp) 1 else 4
 
-            // --- Header ---
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = {
-                        eventEmitter.emit(AppEvent.AddNewEntry)
-                    }) {
-                        Text("+")
-                    }
-
-                    TagList(
-                        tags = SecureDatabase.listTags()
-                            .sortedByDescending { it.frequency }
-                            .map { it.name }
-                            .toSet(),
-                        selectedTags = selectedTags,
-                        onTagsChanged = {
-                            selectedTags = it
-                            offset = 0
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(onClick = { eventEmitter.emit(AppEvent.AddNewEntry) }) {
+                            Text("+")
                         }
-                    )
+
+                        TagList(
+                            tags = SecureDatabase.listTags()
+                                .sortedByDescending { it.frequency }
+                                .map { it.name }
+                                .toSet(),
+                            selectedTags = selectedTags,
+                            onTagsChanged = {
+                                selectedTags = it
+                                offset = 0
+                            }
+                        )
+                    }
                 }
-            }
 
-            items(searchResult.entries) { entry ->
-                EntryCell(entry)
-            }
-
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    TextButton(
-                        enabled = offset > 0,
-                        onClick = {
-                            offset = (offset - maxEntriesPerPage).coerceAtLeast(0)
-                        }
-                    ) {
-                        Text("<")
+                if (searchResult != null) {
+                    items(searchResult.entries) { entry ->
+                        EntryCell(entry)
                     }
 
-                    TextButton(
-                        enabled = offset + maxEntriesPerPage < searchResult.outOfTotal,
-                        onClick = {
-                            offset += maxEntriesPerPage
-                        }
-                    ) {
-                        Text(">")
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Paginator(
+                            offset,
+                            maxEntriesPerPage,
+                            searchResult.outOfTotal,
+                            onOffsetChange = { offset = it }
+                        )
                     }
                 }
             }
         }
+
+        if (searchResult == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(enabled = false) {} // Block interactions while loading
+                    .padding(top = 100.dp), // Offset it so it doesn't block the header(TODO)
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        }
     }
+}
+
+
+@Composable
+private fun Paginator(
+    offset: Int,
+    maxEntriesPerPage: Int,
+    total: Int,
+    onOffsetChange: (Int) -> Unit,
+) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            TextButton(
+                enabled = offset > 0,
+                onClick = { onOffsetChange((offset - maxEntriesPerPage).coerceAtLeast(0)) }
+            ) {
+                Text("<")
+            }
+
+            TextButton(
+                enabled = offset + maxEntriesPerPage < total,
+                onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total-maxEntriesPerPage)) }
+            ) {
+                Text(">")
+            }
+        }
 }
