@@ -12,7 +12,9 @@
             android:usesCleartextTraffic="true">
         <activity
                 android:exported="true"
-                android:name=".MainActivity">
+                android:name=".MainActivity"
+                android:configChanges="orientation|screenSize"
+        >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
