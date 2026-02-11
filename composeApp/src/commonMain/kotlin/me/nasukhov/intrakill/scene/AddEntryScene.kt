@@ -89,7 +89,7 @@ fun AddContentScene() {
 
         TagsInput(
             allTags = SecureDatabase.listTags().map { it.name }.toSet(),
-            onTagsChanged = { tagsInput = it.joinToString{","} },
+            onTagsChanged = { tagsInput = it.joinToString(",") },
         )
 
         Spacer(Modifier.height(12.dp))
