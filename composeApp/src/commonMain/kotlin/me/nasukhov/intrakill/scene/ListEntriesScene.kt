@@ -147,7 +147,7 @@ private fun Paginator(
 
             TextButton(
                 enabled = offset + maxEntriesPerPage < total,
-                onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total-maxEntriesPerPage)) }
+                onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total)) }
             ) {
                 Text(">")
             }
