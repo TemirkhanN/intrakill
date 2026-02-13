@@ -35,10 +35,10 @@ data class EntriesSearchResult(val entries: List<Entry>, val outOfTotal: Int)
 
 object MediaRepository {
 
-    fun save(entry: Entry): Entry {
+    suspend fun save(entry: Entry): Entry = withContext(Dispatchers.IO) {
         SecureDatabase.saveEntry(entry)
 
-        return entry
+        entry
     }
 
     // TODO not really clean, but so far so good
