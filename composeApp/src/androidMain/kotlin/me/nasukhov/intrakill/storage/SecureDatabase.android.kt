@@ -8,6 +8,7 @@ import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.File
 import kotlin.use
 
 private class DBHelper(
@@ -40,6 +41,50 @@ actual object SecureDatabase {
     /** Initialize with a context before opening the database */
     fun init(context: Context) {
         helper = DBHelper(context, this::migrate, DB_NAME, DB_VERSION)
+    }
+
+    fun importFromFile(file: File, password: String): Boolean {
+        val context = helper!!.ctx
+        SQLiteDatabase.loadLibs(context)
+
+        context.deleteDatabase(DB_NAME)
+
+        val db = SQLiteDatabase.openOrCreateDatabase(
+            context.getDatabasePath(DB_NAME),
+            password,
+            null
+        )
+
+        db.beginTransaction()
+        try {
+            val statementAccumulator = StringBuilder()
+            file.bufferedReader().use { reader ->
+                reader.forEachLine { line ->
+                    val trimmed = line.trim()
+
+                    // 1. Skip comments and empty lines immediately
+                    if (trimmed.isEmpty() || trimmed.startsWith("--")) return@forEachLine
+
+                    // 2. Accumulate the line
+                    statementAccumulator.append(line).append("\n")
+
+                    // 3. Only execute when we hit a semicolon at the end of a line
+                    if (trimmed.endsWith(";")) {
+                        val fullStatement = statementAccumulator.toString().trim()
+                        db.execSQL(fullStatement)
+                        statementAccumulator.setLength(0)
+                    }
+                }
+            }
+            db.setTransactionSuccessful()
+        } catch (e: Exception) {
+            return false
+        } finally {
+            db.endTransaction()
+            db.close()
+        }
+
+        return true
     }
 
     suspend fun import(

@@ -9,31 +9,49 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 actual object DbImporter {
-    actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean {
-        return downloadDump(ip, port, password).let {
-            SecureDatabase.import(it, password)
+    actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val tempFile = File(DbFileResolver.ctx.cacheDir, "import_temp.sql")
+
+            downloadDumpToFile(ip, port, password, tempFile)
+
+            try {
+                SecureDatabase.importFromFile(tempFile, password)
+            } finally {
+                tempFile.delete()
+            }
+        } catch (e: Exception) {
+            false
         }
     }
 
-    private suspend fun downloadDump(
+    private suspend fun downloadDumpToFile(
         ip: String,
         port: Int,
-        password: String
-    ): String = withContext(Dispatchers.IO) {
+        password: String,
+        targetFile: File
+    ) = withContext(Dispatchers.IO) {
         val token = Security.hash(password)
-
         val url = URL("http://$ip:$port/dump")
+
         (url.openConnection() as HttpURLConnection).run {
             requestMethod = "GET"
             connectTimeout = 5000
             readTimeout = 300000
-
             setRequestProperty("Authorization", token)
+            doInput = true
 
             when (responseCode) {
-                HttpURLConnection.HTTP_OK -> inputStream.bufferedReader().use { it.readText() }
+                HttpURLConnection.HTTP_OK -> {
+                    inputStream.use { input ->
+                        targetFile.outputStream().use { output ->
+                            // copyTo uses an 8KB buffer internally - OOM proof!
+                            input.copyTo(output)
+                        }
+                    }
+                }
                 HttpURLConnection.HTTP_FORBIDDEN -> throw IllegalStateException("Incorrect password")
-                else -> throw IllegalStateException("Server returned error code: $responseCode")
+                else -> throw IllegalStateException("Server error: $responseCode")
             }
         }
     }

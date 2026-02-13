@@ -373,13 +373,13 @@ private object SqlDumpExporter {
         conn.createStatement().use { stmt ->
             stmt.executeQuery(
                 """
-            SELECT sql
-            FROM sqlite_master
-            WHERE sql IS NOT NULL
-              AND type IN ('table','index','trigger')
-              AND name NOT LIKE 'sqlite_%'
-            ORDER BY type='table' DESC, name
-            """.trimIndent()
+                    SELECT REPLACE(sql, 'CREATE TABLE "', 'CREATE TABLE IF NOT EXISTS "')
+                    FROM sqlite_master
+                    WHERE sql IS NOT NULL
+                      AND type IN ('table','index','trigger')
+                      AND name NOT LIKE 'sqlite_%'
+                    ORDER BY type='table' DESC, name
+                    """.trimIndent()
             ).use { rs ->
                 while (rs.next()) {
                     out.append(rs.getString(1))
