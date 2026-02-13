@@ -50,6 +50,8 @@ object MediaRepository {
     }
 
     suspend fun getById(entryId: String): Entry  = withContext(Dispatchers.IO) {SecureDatabase.getById(entryId)}
+
+    suspend fun deleteById(entryId: String): Unit = withContext(Dispatchers.IO) { SecureDatabase.deleteById(entryId) }
 }
 
 data class Tag(

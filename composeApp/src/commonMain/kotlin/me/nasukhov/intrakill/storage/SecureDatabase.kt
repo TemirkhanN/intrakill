@@ -20,6 +20,8 @@ expect object SecureDatabase {
     fun listTags(): Set<Tag>
 
     fun getById(entryId: String): Entry
+
+    fun deleteById(entryId: String)
 }
 
 class LazyList<T>(

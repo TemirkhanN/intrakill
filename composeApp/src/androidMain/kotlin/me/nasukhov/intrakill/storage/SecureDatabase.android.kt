@@ -8,6 +8,7 @@ import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import kotlin.use
 
 private class DBHelper(
     val ctx: Context,
@@ -242,6 +243,13 @@ actual object SecureDatabase {
                 tags = LazySet { listTags(entryId) }
             )
         }
+    }
+
+    actual fun deleteById(entryId: String) {
+        val db = db ?: error("DB not opened")
+        val query = "DELETE FROM entry WHERE id = ?"
+
+        db.execSQL(query, arrayOf(entryId))
     }
 
     private fun listAttachments(entryId: String): List<Attachment> {

@@ -203,6 +203,15 @@ actual object SecureDatabase {
         return result
     }
 
+    actual fun deleteById(entryId: String) {
+        val query = "DELETE FROM entry WHERE id = ?"
+
+        db.prepareStatement(query).use { stmt ->
+            stmt.setString(1, entryId)
+
+            stmt.executeUpdate()
+        }
+    }
 
     actual fun getById(entryId: String): Entry {
         val sql = """
