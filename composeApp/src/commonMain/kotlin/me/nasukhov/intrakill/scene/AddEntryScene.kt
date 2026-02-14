@@ -1,13 +1,10 @@
 package me.nasukhov.intrakill.scene
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,16 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
 import me.nasukhov.intrakill.component.AttachmentView
+import me.nasukhov.intrakill.component.TagsInput
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
@@ -38,10 +32,11 @@ import me.nasukhov.intrakill.storage.SecureDatabase
 @Composable
 fun AddContentScene() {
     val selected = remember { mutableStateListOf<Attachment>() }
-    var tagsInput by remember { mutableStateOf("") }
+    var tags by remember { mutableStateOf<Set<String>>(emptySet()) }
     var nameInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    val knownTags = SecureDatabase.listTags()
 
     val scope = rememberCoroutineScope()
     val eventEmitter = LocalEventEmitter.current
@@ -115,8 +110,8 @@ fun AddContentScene() {
         )
 
         TagsInput(
-            allTags = SecureDatabase.listTags().map { it.name }.toSet(),
-            onTagsChanged = { tagsInput = it.joinToString(",") },
+            allTags = knownTags,
+            onTagsChanged = { tags = it },
             isEnabled = !isSaving
         )
 
@@ -125,12 +120,6 @@ fun AddContentScene() {
         Button(
             enabled = !isSaving,
             onClick = {
-                val tags = tagsInput
-                    .split(",")
-                    .map { it.trim().lowercase() }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
-
                 if (selected.isEmpty() || tags.isEmpty() || nameInput.isEmpty()) {
                     error = "Select files and enter tags"
                     return@Button
@@ -168,85 +157,6 @@ fun AddContentScene() {
         error?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, color = Color.Red)
-        }
-    }
-}
-
-@Composable
-private fun TagsInput(
-    allTags: Set<String>,
-    modifier: Modifier = Modifier,
-    onTagsChanged: (Set<String>) -> Unit,
-    isEnabled: Boolean = true,
-) {
-    var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
-    val focusRequester = remember { FocusRequester() }
-
-    val parts = textFieldValue.text.split(",").map { it.trim() }
-    val currentPrefix = parts.lastOrNull().orEmpty()
-
-    val suggestions = remember(currentPrefix, allTags) {
-        if (currentPrefix.isBlank()) emptyList()
-        else allTags.filter {
-            it.startsWith(currentPrefix, ignoreCase = true) &&
-                    !parts.dropLast(1).contains(it) // Don't suggest tags already "locked in"
-        }
-    }
-
-    Column(modifier) {
-        OutlinedTextField(
-            value = textFieldValue,
-            enabled = isEnabled,
-            onValueChange = { newValue ->
-                textFieldValue = newValue
-                onTagsChanged(
-                    newValue.text.split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .toSet()
-                )
-            },
-            label = { Text("Tags (comma separated)") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusRequester(focusRequester)
-        )
-
-        if (suggestions.isNotEmpty() && isEnabled) {
-            Spacer(Modifier.height(4.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
-            ) {
-                suggestions.take(6).forEach { tag ->
-                    Text(
-                        text = tag,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val rawInput = parts.dropLast(1)
-                                    .plus(tag)
-                                    .joinToString(", ") + ", "
-
-                                textFieldValue = TextFieldValue(
-                                    text = rawInput,
-                                    selection = TextRange(rawInput.length)
-                                )
-
-                                onTagsChanged(
-                                    rawInput.split(",")
-                                        .map { it.trim() }
-                                        .filter { it.isNotEmpty() }
-                                        .toSet()
-                                )
-
-                                focusRequester.requestFocus()
-                            }
-                            .padding(12.dp)
-                    )
-                }
-            }
         }
     }
 }
