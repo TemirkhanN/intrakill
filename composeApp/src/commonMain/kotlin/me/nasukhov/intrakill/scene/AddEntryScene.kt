@@ -19,7 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.AppEvent
@@ -169,48 +173,51 @@ fun AddContentScene() {
 }
 
 @Composable
-fun TagsInput(
+private fun TagsInput(
     allTags: Set<String>,
     modifier: Modifier = Modifier,
     onTagsChanged: (Set<String>) -> Unit,
     isEnabled: Boolean = true,
 ) {
-    var text by remember { mutableStateOf("") }
+    var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
+    val focusRequester = remember { FocusRequester() }
 
-    val parts = text.split(",").map { it.trim() }
+    val parts = textFieldValue.text.split(",").map { it.trim() }
     val currentPrefix = parts.lastOrNull().orEmpty()
 
     val suggestions = remember(currentPrefix, allTags) {
         if (currentPrefix.isBlank()) emptyList()
         else allTags.filter {
-            it.startsWith(currentPrefix, ignoreCase = true) && !parts.contains(it)
+            it.startsWith(currentPrefix, ignoreCase = true) &&
+                    !parts.dropLast(1).contains(it) // Don't suggest tags already "locked in"
         }
     }
 
     Column(modifier) {
         OutlinedTextField(
-            value = text,
+            value = textFieldValue,
             enabled = isEnabled,
-            onValueChange = {
-                text = it
+            onValueChange = { newValue ->
+                textFieldValue = newValue
                 onTagsChanged(
-                    it.split(",")
-                        .map { s -> s.trim() }
-                        .filter { s -> s.isNotEmpty() }
-                        .toSet()
+                    newValue.text.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .toSet()
                 )
             },
             label = { Text("Tags (comma separated)") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
         )
 
         if (suggestions.isNotEmpty() && isEnabled) {
             Spacer(Modifier.height(4.dp))
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outline)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
             ) {
                 suggestions.take(6).forEach { tag ->
                     Text(
@@ -218,19 +225,23 @@ fun TagsInput(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (!isEnabled) {return@clickable}
-                                val newText =
-                                    parts.dropLast(1)
-                                        .plus(tag)
-                                        .joinToString(", ") + ", "
+                                val rawInput = parts.dropLast(1)
+                                    .plus(tag)
+                                    .joinToString(", ") + ", "
 
-                                text = newText
+                                textFieldValue = TextFieldValue(
+                                    text = rawInput,
+                                    selection = TextRange(rawInput.length)
+                                )
+
                                 onTagsChanged(
-                                    newText.split(",")
+                                    rawInput.split(",")
                                         .map { it.trim() }
                                         .filter { it.isNotEmpty() }
                                         .toSet()
                                 )
+
+                                focusRequester.requestFocus()
                             }
                             .padding(12.dp)
                     )

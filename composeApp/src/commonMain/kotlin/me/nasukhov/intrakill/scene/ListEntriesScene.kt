@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.AppEvent
 import me.nasukhov.intrakill.LocalEventEmitter
+import me.nasukhov.intrakill.component.Paginator
 import me.nasukhov.intrakill.content.EntriesSearchResult
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
@@ -20,7 +21,7 @@ import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.storage.SecureDatabase
 
 @Composable
-fun EntryCell(entry: Entry) {
+private fun EntryCell(entry: Entry) {
     val eventEmitter = LocalEventEmitter.current
 
     Box(
@@ -48,7 +49,7 @@ fun ListEntriesScene(
     val eventEmitter = LocalEventEmitter.current
 
     var selectedTags by remember { mutableStateOf(initialTags) }
-    var offset by remember { mutableStateOf(initialOffset) }
+    var offset by remember { mutableIntStateOf(initialOffset) }
 
     // Use produceState to manage the query. Remember introduces lag, and combined with BoxWithConstraint recomputation
     // duplicates the request.
@@ -124,32 +125,4 @@ fun ListEntriesScene(
             }
         }
     }
-}
-
-
-@Composable
-private fun Paginator(
-    offset: Int,
-    maxEntriesPerPage: Int,
-    total: Int,
-    onOffsetChange: (Int) -> Unit,
-) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            TextButton(
-                enabled = offset > 0,
-                onClick = { onOffsetChange((offset - maxEntriesPerPage).coerceAtLeast(0)) }
-            ) {
-                Text("<")
-            }
-
-            TextButton(
-                enabled = offset + maxEntriesPerPage < total,
-                onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total)) }
-            ) {
-                Text(">")
-            }
-        }
 }

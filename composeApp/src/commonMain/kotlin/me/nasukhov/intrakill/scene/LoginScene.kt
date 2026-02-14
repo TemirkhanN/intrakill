@@ -30,15 +30,9 @@ fun LoginScene() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Secure Vault",
+                text = "Internal Storage Overkill",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Enter your master password to decrypt your data.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             OutlinedTextField(
