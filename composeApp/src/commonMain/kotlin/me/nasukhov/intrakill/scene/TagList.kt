@@ -13,41 +13,43 @@ fun TagList(
     selectedTags: Set<String> = emptySet(),
     onTagsChanged: (Set<String>) -> Unit,
     initiallyVisible: Int = 15,
+    expandedInitially: Boolean = false,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(expandedInitially) }
 
     val visibleTags = if (expanded) tags else tags.take(initiallyVisible)
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+        Column(modifier = Modifier.fillMaxWidth()) {
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            visibleTags.forEach { tag ->
-                val selected = tag in selectedTags
-
-                FilterChip(
-                    selected = selected,
-                    onClick = {
-                        val updated =
-                            if (selected) selectedTags - tag
-                            else selectedTags + tag
-
-                        onTagsChanged(updated)
-                    },
-                    label = { Text(tag) }
-                )
-            }
-        }
-
-        if (tags.size > initiallyVisible) {
-            Spacer(Modifier.height(8.dp))
-
-            TextButton(
-                onClick = { expanded = !expanded }
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(if (expanded) "less tags" else "more tags")
+                visibleTags.forEach { tag ->
+                    val selected = tag in selectedTags
+
+                    FilterChip(
+                        selected = selected,
+                        onClick = {
+                            val updated =
+                                if (selected) selectedTags - tag
+                                else selectedTags + tag
+
+                            onTagsChanged(updated)
+                        },
+                        label = { Text(tag) }
+                    )
+                }
+            }
+
+            if (tags.size > initiallyVisible) {
+                Spacer(Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = { expanded = !expanded }
+                ) {
+                    Text(if (expanded) "less tags" else "more tags")
+                }
             }
         }
     }
