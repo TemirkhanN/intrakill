@@ -17,17 +17,28 @@ import me.nasukhov.intrakill.component.EntryComponent
 
 @Composable
 fun ViewEntryScene(component: EntryComponent) {
-    val entryState by component.entry.subscribeAsState()
-    val isEditing by component.isEditing.subscribeAsState()
+    val state by component.state.subscribeAsState()
 
-    val entry = entryState.getOrNull()
-    Crossfade(targetState = entry) { currentEntry ->
-        if (currentEntry == null) {
+    Crossfade(targetState = state.isLoading) { isLoading ->
+        val currentEntry = state.entry
+        if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
+            }
+        } else if (currentEntry == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column {
+                    Text("Entry does not exist. It was probably deleted")
+                    TextButton(onClick = component::onReturnClicked) {
+                        Text("← Back")
+                    }
+                }
             }
         } else {
             LazyColumn(
@@ -41,9 +52,9 @@ fun ViewEntryScene(component: EntryComponent) {
                         Text("← Back")
                     }
                     TextButton(onClick = component::toggleEditMode) {
-                        Text(if (isEditing) "View mode" else "Edit mode")
+                        Text(if (state.isEditing) "View mode" else "Edit mode")
                     }
-                    if (isEditing) {
+                    if (state.isEditing) {
                         TextButton(onClick = component::onDeletePressed) {
                             Text("Delete entirely")
                         }
@@ -60,7 +71,7 @@ fun ViewEntryScene(component: EntryComponent) {
                 items(currentEntry.attachments) { attachment ->
                     AttachmentView(
                         attachment,
-                        editMode = isEditing,
+                        editMode = state.isEditing,
                         onMoveUp = {},
                         onMoveDown = {},
                         onDelete = {}

@@ -8,12 +8,17 @@ import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.navigation.Request
-import me.nasukhov.intrakill.scene.OptionalValue
 import me.nasukhov.intrakill.scene.coroutineScope
 
+data class EntryState(
+    val entryId: String,
+    val entry: Entry? = null,
+    val isEditing: Boolean = false,
+    val isLoading: Boolean = false,
+)
+
 interface EntryComponent {
-    val entry: Value<OptionalValue<Entry>>
-    val isEditing: Value<Boolean>
+    val state: Value<EntryState>
 
     fun onReturnClicked()
 
@@ -29,15 +34,17 @@ class DefaultEntryComponent(
     entryId: String,
     private val navigate: (Request) -> Unit
 ): EntryComponent, ComponentContext by context {
-    override val isEditing = MutableValue(false)
+    private val mutableState = MutableValue(EntryState(entryId=entryId, isLoading = true))
+    override val state: Value<EntryState> = mutableState
     private val scope = instanceKeeper.coroutineScope()
-
-    override val entry = MutableValue(OptionalValue<Entry>())
 
     init {
         scope.launch {
-            var entryValue = MediaRepository.getById(entryId)
-            entry.update { OptionalValue(entryValue) }
+            var entry = MediaRepository.findById(entryId)
+            mutableState.update { it.copy(
+                entry = entry,
+                isLoading = false,
+            ) }
         }
     }
 
@@ -46,10 +53,12 @@ class DefaultEntryComponent(
     }
 
     override fun onDeletePressed() {
-        require(isEditing.value)
-        scope.launch {
-            MediaRepository.deleteById(entry.value.get().id)
-            navigate(Request.Back)
+        state.value.let {
+            require(it.isEditing && it.entry != null)
+            scope.launch {
+                MediaRepository.deleteById(it.entry.id)
+                navigate(Request.Back)
+            }
         }
     }
 
@@ -58,6 +67,7 @@ class DefaultEntryComponent(
     }
 
     override fun toggleEditMode() {
-        isEditing.value = !isEditing.value
+        require(state.value.entry != null)
+        mutableState.update { it.copy(isEditing = !it.isEditing) }
     }
 }

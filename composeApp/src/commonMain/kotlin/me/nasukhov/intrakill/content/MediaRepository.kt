@@ -30,7 +30,13 @@ object MediaRepository {
         )
     }
 
-    suspend fun getById(entryId: String): Entry  = withContext(Dispatchers.IO) {SecureDatabase.getById(entryId)}
+    suspend fun findById(entryId: String): Entry?  = withContext(Dispatchers.IO) {
+        try {
+            SecureDatabase.getById(entryId)
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     suspend fun deleteById(entryId: String): Unit = withContext(Dispatchers.IO) { SecureDatabase.deleteById(entryId) }
 }

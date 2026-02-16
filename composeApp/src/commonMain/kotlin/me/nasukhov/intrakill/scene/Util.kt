@@ -21,12 +21,3 @@ fun InstanceKeeper.coroutineScope(): CoroutineScope {
     }
     return scope
 }
-
-data class OptionalValue<T: Any>(var value: T? = null) {
-    fun get(): T = value!!
-    fun set(value: T) {
-        this.value = value
-    }
-
-    fun getOrNull(): T? = value
-}
