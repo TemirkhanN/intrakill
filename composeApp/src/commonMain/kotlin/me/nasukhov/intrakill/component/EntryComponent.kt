@@ -22,7 +22,7 @@ interface EntryComponent {
 
     fun onReturnClicked()
 
-    fun onDeletePressed()
+    fun deleteEntry()
 
     fun onTagsChanged(newTags: Set<String>)
 
@@ -52,7 +52,7 @@ class DefaultEntryComponent(
         navigate(Request.Back)
     }
 
-    override fun onDeletePressed() {
+    override fun deleteEntry() {
         state.value.let {
             require(it.isEditing && it.entry != null)
             scope.launch {

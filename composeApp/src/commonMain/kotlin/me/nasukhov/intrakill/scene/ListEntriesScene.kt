@@ -18,15 +18,17 @@ import me.nasukhov.intrakill.view.Paginator
 
 @Composable
 fun ListEntriesScene(component: ListEntriesComponent) {
-    val filteredByTags by component.filteredByTags.subscribeAsState()
-    val offset by component.offset.subscribeAsState()
-    val searchResultState by component.searchResult.subscribeAsState()
+    val state by component.state.subscribeAsState()
     val knownTags by component.knownTags.subscribeAsState()
-    val searchResult = searchResultState.data
+
+    val gridState = rememberLazyGridState()
+
+    val isSearching = state.isSearching
+    val searchResult = state.searchResult
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
-            state = component.gridState, // Crucial: This preserves scroll!
+            state = gridState,
             columns = GridCells.Adaptive(minSize = 150.dp),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -40,13 +42,13 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                     // TODO expanded resets
                     TagList(
                         tags = knownTags.map { it.name }.toSet(),
-                        selectedTags = filteredByTags,
+                        selectedTags = state.filteredByTags,
                         onTagsChanged = component::onTagsChanged
                     )
                 }
             }
 
-            if (searchResult != null) {
+            if (!isSearching && searchResult !== null) {
                 items(searchResult.entries) { entry ->
                     Box(
                         modifier = Modifier
@@ -65,7 +67,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Paginator(
-                        offset = offset,
+                        offset = state.offset,
                         maxEntriesPerPage = 12,
                         total = searchResult.outOfTotal,
                         onOffsetChange = component::onOffsetChanged
@@ -74,7 +76,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
             }
         }
 
-        if (searchResult == null) {
+        if (state.isSearching) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
     }

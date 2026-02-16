@@ -55,7 +55,7 @@ fun ViewEntryScene(component: EntryComponent) {
                         Text(if (state.isEditing) "View mode" else "Edit mode")
                     }
                     if (state.isEditing) {
-                        TextButton(onClick = component::onDeletePressed) {
+                        TextButton(onClick = component::deleteEntry) {
                             Text("Delete entirely")
                         }
                     }
