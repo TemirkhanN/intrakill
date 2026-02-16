@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.component
+package me.nasukhov.intrakill.view
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

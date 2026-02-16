@@ -13,8 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.navigation.ListEntriesComponent
-import me.nasukhov.intrakill.component.Paginator
+import me.nasukhov.intrakill.component.ListEntriesComponent
+import me.nasukhov.intrakill.view.Paginator
 
 @Composable
 fun ListEntriesScene(component: ListEntriesComponent) {

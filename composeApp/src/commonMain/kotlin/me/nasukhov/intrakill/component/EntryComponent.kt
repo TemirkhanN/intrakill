@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.navigation
+package me.nasukhov.intrakill.component
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
@@ -7,10 +7,11 @@ import com.arkivanov.decompose.value.update
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
+import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.OptionalValue
 import me.nasukhov.intrakill.scene.coroutineScope
 
-interface ViewEntryComponent {
+interface EntryComponent {
     val entry: Value<OptionalValue<Entry>>
     val isEditing: Value<Boolean>
 
@@ -23,11 +24,11 @@ interface ViewEntryComponent {
     fun toggleEditMode()
 }
 
-class DefaultViewEntryComponent(
+class DefaultEntryComponent(
     context: ComponentContext,
     entryId: String,
     private val navigate: (Request) -> Unit
-): ViewEntryComponent, ComponentContext by context {
+): EntryComponent, ComponentContext by context {
     override val isEditing = MutableValue(false)
     private val scope = instanceKeeper.coroutineScope()
 

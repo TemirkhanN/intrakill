@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.navigation
+package me.nasukhov.intrakill.component
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
@@ -6,6 +6,7 @@ import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.MediaRepository
+import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 
 data class LoginState(

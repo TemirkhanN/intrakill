@@ -9,29 +9,16 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
-import kotlinx.serialization.Serializable
-
-sealed interface Request {
-    data class ViewEntry(val id: String) : Request
-    data object AddEntry : Request
-    data object ImportRequested: Request
-    data class ListEntries(val filterByTags: Set<String> = emptySet()): Request
-    data object Back: Request
-}
-
-@Serializable
-sealed interface Route {
-    @Serializable
-    data object Login : Route
-    @Serializable
-    data class List(val filterByTags: Set<String> = emptySet()) : Route
-    @Serializable
-    data class View(val entryId: String) : Route
-    @Serializable
-    data object AddEntry : Route
-    @Serializable
-    data object ImportRequested : Route
-}
+import me.nasukhov.intrakill.component.AddEntryComponent
+import me.nasukhov.intrakill.component.DefaultAddEntryComponent
+import me.nasukhov.intrakill.component.DefaultImportComponent
+import me.nasukhov.intrakill.component.DefaultListEntriesComponent
+import me.nasukhov.intrakill.component.DefaultLoginComponent
+import me.nasukhov.intrakill.component.DefaultEntryComponent
+import me.nasukhov.intrakill.component.ImportComponent
+import me.nasukhov.intrakill.component.ListEntriesComponent
+import me.nasukhov.intrakill.component.LoginComponent
+import me.nasukhov.intrakill.component.EntryComponent
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -39,9 +26,9 @@ interface RootComponent {
     sealed class Child {
         class List(val component: ListEntriesComponent) : Child()
         class Login(val component: LoginComponent) : Child()
-        class View(val component: ViewEntryComponent) : Child()
+        class View(val component: EntryComponent) : Child()
         class AddEntry(val component: AddEntryComponent) : Child()
-        data class Import(val component: ImportComponent): Child()
+        class Import(val component: ImportComponent): Child()
     }
 }
 
@@ -82,7 +69,7 @@ class DefaultRootComponent(
         )
         is Route.View -> {
             RootComponent.Child.View(
-                DefaultViewEntryComponent(
+                DefaultEntryComponent(
                     context = context,
                     entryId = route.entryId,
                     navigate = ::handleEntryViewRequests
@@ -95,40 +82,36 @@ class DefaultRootComponent(
                 navigate = ::handleAddEntryRequests
             )
         )
-        else -> error("Not implemented yet $route")
     }
 
-    // Router for all requests on login page
     private fun handleLoginRequests(request: Request) = when (request) {
         is Request.ListEntries -> navigation.replaceCurrent(Route.List())
         is Request.ImportRequested -> navigation.push(Route.ImportRequested)
-        else -> error("Not implemented yet $request")
+        else -> error("The request $request is not supported in this component")
     }
 
     private fun handleImportRequests(request: Request) = when (request) {
         is Request.Back -> navigation.pop()
-        else -> error("Not implemented yet $request")
+        else -> error("The request $request is not supported in this component")
     }
 
-    // Router for all requests on content list page
     private fun handleContentListRequests(request: Request) = when (request) {
         is Request.ViewEntry -> navigation.push(Route.View(request.id))
         is Request.AddEntry -> navigation.push(Route.AddEntry)
-        else -> error("Not implemented yet $request")
+        else -> error("The request $request is not supported in this component")
     }
 
-    // Router for all requests on entry view page
     private fun handleEntryViewRequests(request: Request) = when (request) {
         is Request.ListEntries -> {
             navigation.replaceAll(Route.List(filterByTags = request.filterByTags))
         }
         is Request.Back -> navigation.pop()
-        else -> error("Not implemented yet $request")
+        else -> error("The request $request is not supported in this component")
     }
 
     private fun handleAddEntryRequests(request: Request) = when (request) {
         is Request.Back -> navigation.pop()
         is Request.ViewEntry -> navigation.replaceCurrent(Route.View(request.id))
-        else -> error("Not implemented yet $request")
+        else -> error("The request $request is not supported in this component")
     }
 }

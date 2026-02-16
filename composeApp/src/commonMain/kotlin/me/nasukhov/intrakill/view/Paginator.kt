@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.component
+package me.nasukhov.intrakill.view
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row

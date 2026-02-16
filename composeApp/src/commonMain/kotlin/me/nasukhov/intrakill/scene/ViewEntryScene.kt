@@ -12,11 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.component.AttachmentView
-import me.nasukhov.intrakill.navigation.ViewEntryComponent
+import me.nasukhov.intrakill.view.AttachmentView
+import me.nasukhov.intrakill.component.EntryComponent
 
 @Composable
-fun ViewEntryScene(component: ViewEntryComponent) {
+fun ViewEntryScene(component: EntryComponent) {
     val entryState by component.entry.subscribeAsState()
     val isEditing by component.isEditing.subscribeAsState()
 

@@ -14,9 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.component.AttachmentView
-import me.nasukhov.intrakill.component.TagsInput
-import me.nasukhov.intrakill.navigation.AddEntryComponent
+import me.nasukhov.intrakill.view.AttachmentView
+import me.nasukhov.intrakill.view.TagsInput
+import me.nasukhov.intrakill.component.AddEntryComponent
 
 @Composable
 fun AddEntryScene(component: AddEntryComponent) {

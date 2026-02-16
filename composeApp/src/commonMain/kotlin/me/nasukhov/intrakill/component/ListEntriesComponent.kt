@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.navigation
+package me.nasukhov.intrakill.component
 
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import com.arkivanov.decompose.ComponentContext
@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.EntriesSearchResult
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
 

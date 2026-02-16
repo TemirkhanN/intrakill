@@ -1,4 +1,4 @@
-package me.nasukhov.intrakill.navigation
+package me.nasukhov.intrakill.component
 
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
@@ -11,6 +11,7 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.FilePicker
 

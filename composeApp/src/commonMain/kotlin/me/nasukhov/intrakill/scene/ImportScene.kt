@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.navigation.ImportComponent
+import me.nasukhov.intrakill.component.ImportComponent
 
 @Composable
 fun ImportScene(component: ImportComponent) {

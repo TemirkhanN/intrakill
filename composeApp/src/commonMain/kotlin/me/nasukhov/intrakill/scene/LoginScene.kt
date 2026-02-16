@@ -9,7 +9,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.navigation.LoginComponent
+import me.nasukhov.intrakill.component.LoginComponent
 
 @Composable
 fun LoginScene(component: LoginComponent) {
