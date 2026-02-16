@@ -15,6 +15,7 @@ fun TagList(
     initiallyVisible: Int = 15,
     expandedInitially: Boolean = false,
 ) {
+    var selectedTags by remember { mutableStateOf(selectedTags) }
     var expanded by remember { mutableStateOf(expandedInitially) }
 
     val visibleTags = if (expanded) tags else tags.take(initiallyVisible)
@@ -31,11 +32,11 @@ fun TagList(
                     FilterChip(
                         selected = selected,
                         onClick = {
-                            val updated =
-                                if (selected) selectedTags - tag
-                                else selectedTags + tag
-
-                            onTagsChanged(updated)
+                            selectedTags = if (selected) {
+                                selectedTags - tag
+                            } else {
+                                selectedTags + tag
+                            }
                         },
                         label = { Text(tag) }
                     )
@@ -50,6 +51,10 @@ fun TagList(
                 ) {
                     Text(if (expanded) "less tags" else "more tags")
                 }
+            }
+
+            TextButton(onClick = {onTagsChanged(selectedTags)}) {
+                Text("Find")
             }
         }
     }

@@ -11,22 +11,16 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import me.nasukhov.intrakill.scene.AddContentScene
-import me.nasukhov.intrakill.scene.ImportDbScene
+import com.arkivanov.decompose.extensions.compose.stack.Children
+import com.arkivanov.decompose.extensions.compose.stack.animation.fade
+import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
+import me.nasukhov.intrakill.scene.AddEntryScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
-import me.nasukhov.intrakill.scene.LoginScene
 import me.nasukhov.intrakill.scene.ViewEntryScene
 import me.nasukhov.intrakill.storage.ProvideFilePicker
-
-sealed interface AppEvent {
-    object LoginSucceeded : AppEvent
-    object Logout : AppEvent
-    data class ViewEntry(val entryId: String) : AppEvent
-    object AddNewEntry : AppEvent
-    object Back : AppEvent
-    data class TagsSelected(val tags: Set<String>) : AppEvent
-    object ImportRequested : AppEvent
-}
+import me.nasukhov.intrakill.navigation.RootComponent
+import me.nasukhov.intrakill.scene.ImportScene
+import me.nasukhov.intrakill.scene.LoginScene
 
 @Composable
 fun IntrakillTheme(content: @Composable () -> Unit) {
@@ -60,22 +54,19 @@ fun IntrakillTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun App() {
-    val appState = remember { AppState() }
-
+fun App(root: RootComponent) {
     IntrakillTheme {
         ProvideFilePicker {
-            CompositionLocalProvider(
-                LocalEventEmitter provides EventEmitter { event ->
-                    appState.handle(event)
-                }
-            ) {
-                when (val currentScene = appState.currentScene) {
-                    Scene.Login -> LoginScene()
-                    is Scene.Content -> ListEntriesScene(currentScene.filteredByTags)
-                    Scene.NewEntry -> AddContentScene()
-                    is Scene.ViewEntry -> ViewEntryScene(currentScene.entryId)
-                    Scene.ImportDb -> ImportDbScene()
+            Children(
+                stack = root.stack,
+                animation = stackAnimation(fade())
+            ) { child ->
+                when (val instance = child.instance) {
+                    is RootComponent.Child.List -> ListEntriesScene(instance.component)
+                    is RootComponent.Child.View -> ViewEntryScene(instance.component)
+                    is RootComponent.Child.AddEntry -> AddEntryScene(instance.component)
+                    is RootComponent.Child.Login -> LoginScene(instance.component)
+                    is RootComponent.Child.Import -> ImportScene(instance.component)
                 }
             }
         }

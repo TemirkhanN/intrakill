@@ -8,15 +8,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
-import me.nasukhov.intrakill.AppEvent
-import me.nasukhov.intrakill.LocalEventEmitter
-import me.nasukhov.intrakill.storage.SecureDatabase
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import me.nasukhov.intrakill.navigation.LoginComponent
 
 @Composable
-fun LoginScene() {
-    val eventEmitter = LocalEventEmitter.current
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun LoginScene(component: LoginComponent) {
+    val state by component.state.subscribeAsState()
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -36,71 +33,43 @@ fun LoginScene() {
             )
 
             OutlinedTextField(
-                value = password,
-                onValueChange = {
-                    password = it
-                    errorMessage = null
-                },
+                value = state.password,
+                onValueChange = component::onPasswordChanged,
                 label = { Text("Master Password") },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = errorMessage != null
+                isError = !state.violations.isEmpty()
             )
 
-            if (errorMessage != null) {
+            if (!state.violations.isEmpty()) {
                 Text(
-                    text = errorMessage!!,
+                    text = state.violations.joinToString("\n"),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.labelSmall
                 )
             }
 
             Button(
-                onClick = {
-                    val violation = validatePassword(password)
-                    if (!violation.isEmpty()) {
-                        errorMessage = violation
-                    } else {
-                        if (SecureDatabase.open(password)) {
-                            eventEmitter.emit(AppEvent.LoginSucceeded)
-                        } else {
-                            errorMessage = "Incorrect password"
-                        }
-                    }
-                },
+                onClick = component::onUnlockClicked,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !state.isLoggingIn
             ) {
-                Text("Unlock Database")
+                if (state.isLoggingIn) {
+                    CircularProgressIndicator()
+                } else {
+                    Text("Unlock Database")
+                }
             }
 
             Button(
-                onClick = {
-                    eventEmitter.emit(AppEvent.ImportRequested)
-                },
+                onClick = component::onImportClicked,
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text("Import Database")
             }
-
-            Text(
-                text = "Warning: If you forget this password, your data is unrecoverable.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                modifier = Modifier.padding(top = 8.dp)
-            )
         }
     }
-}
-
-private fun validatePassword(password: String): String {
-    val passwordMinLength = 6
-
-    if (password.length < passwordMinLength) {
-        return "Password must be at least $passwordMinLength characters"
-    }
-
-    return ""
 }

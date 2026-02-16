@@ -34,11 +34,18 @@ data class Entry(
 data class EntriesSearchResult(val entries: List<Entry>, val outOfTotal: Int)
 
 object MediaRepository {
+    suspend fun unlock(password: String): Boolean = withContext(Dispatchers.IO) {
+        SecureDatabase.open(password)
+    }
 
     suspend fun save(entry: Entry): Entry = withContext(Dispatchers.IO) {
         SecureDatabase.saveEntry(entry)
 
         entry
+    }
+
+    suspend fun listTags(): Set<Tag> = withContext(Dispatchers.IO) {
+        SecureDatabase.listTags()
     }
 
     // TODO not really clean, but so far so good

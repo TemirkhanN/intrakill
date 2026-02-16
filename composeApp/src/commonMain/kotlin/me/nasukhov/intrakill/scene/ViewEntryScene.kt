@@ -11,25 +11,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
-import me.nasukhov.intrakill.AppEvent
-import me.nasukhov.intrakill.LocalEventEmitter
+import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.AttachmentView
-import me.nasukhov.intrakill.content.Entry
-import me.nasukhov.intrakill.content.MediaRepository
+import me.nasukhov.intrakill.navigation.ViewEntryComponent
 
 @Composable
-fun ViewEntryScene(entryId: String) {
-    val eventEmitter = LocalEventEmitter.current
+fun ViewEntryScene(component: ViewEntryComponent) {
+    val entryState by component.entry.subscribeAsState()
+    val isEditing by component.isEditing.subscribeAsState()
 
-    val entryState = produceState<Entry?>(initialValue = null, key1 = entryId) {
-        value = MediaRepository.getById(entryId)
-    }
-    var isEditing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    val entry = entryState.value
-
+    val entry = entryState.getOrNull()
     Crossfade(targetState = entry) { currentEntry ->
         if (currentEntry == null) {
             Box(
@@ -46,21 +37,14 @@ fun ViewEntryScene(entryId: String) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    TextButton(onClick = { eventEmitter.emit(AppEvent.Back) }) {
+                    TextButton(onClick = component::onReturnClicked) {
                         Text("← Back")
                     }
-                    TextButton(onClick = { isEditing = !isEditing}) {
+                    TextButton(onClick = component::toggleEditMode) {
                         Text(if (isEditing) "View mode" else "Edit mode")
                     }
                     if (isEditing) {
-                        TextButton(
-                            onClick = {
-                                scope.launch {
-                                    MediaRepository.deleteById(entryId)
-                                    eventEmitter.emit(AppEvent.Back)
-                                }
-                            },
-                        ) {
+                        TextButton(onClick = component::onDeletePressed) {
                             Text("Delete entirely")
                         }
                     }
@@ -69,9 +53,7 @@ fun ViewEntryScene(entryId: String) {
                 item {
                     TagList(
                         tags = currentEntry.tags,
-                        onTagsChanged = {
-                            eventEmitter.emit(AppEvent.TagsSelected(it))
-                        }
+                        onTagsChanged = component::onTagsChanged
                     )
                 }
 
@@ -83,6 +65,12 @@ fun ViewEntryScene(entryId: String) {
                         onMoveDown = {},
                         onDelete = {}
                     )
+                }
+
+                item {
+                    TextButton(onClick = component::onReturnClicked) {
+                        Text("← Back")
+                    }
                 }
             }
         }

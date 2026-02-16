@@ -6,6 +6,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.arkivanov.decompose.DefaultComponentContext
+import com.arkivanov.decompose.retainedComponent
+import com.arkivanov.essenty.lifecycle.LifecycleRegistry
+import me.nasukhov.intrakill.navigation.DefaultRootComponent
 import me.nasukhov.intrakill.storage.DbFileResolver
 import me.nasukhov.intrakill.storage.SecureDatabase
 
@@ -14,11 +18,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        // TODO is there a better way to inject these deps?
         SecureDatabase.init(this)
         DbFileResolver.init(this)
 
+        val root = retainedComponent{ context ->
+            DefaultRootComponent(componentContext = context)
+        }
         setContent {
-            App()
+            App(root)
         }
     }
 }
@@ -26,5 +34,7 @@ class MainActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppAndroidPreview() {
-    App()
+    val lifecycle = LifecycleRegistry()
+    val root = DefaultRootComponent(DefaultComponentContext(lifecycle))
+    App(root)
 }
