@@ -5,6 +5,7 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.DbImporter
@@ -66,12 +67,12 @@ class DefaultImportComponent(
                     password = current.password
                 )
             } catch (e: Exception) {
-                errors.add((e.message ?: "Fatal error on import attempt."))
+                errors += (e.message ?: "Fatal error on import attempt.")
                 false
             }
 
-            if (success) {
-                navigate(Request.Back)
+            if (success && MediaRepository.unlock(current.password)) {
+                navigate(Request.ListEntries())
             } else {
                 mutableState.update { it.copy(
                     isInProgress = false,

@@ -108,6 +108,7 @@ class DefaultRootComponent(
 
     private fun handleImportRequests(request: Request) = when (request) {
         is Request.Back -> navigation.pop()
+        is Request.ListEntries -> navigation.replaceCurrent(Route.List())
         else -> error("The request $request is not supported in this component")
     }
 

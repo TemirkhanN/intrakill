@@ -126,7 +126,7 @@ actual object SecureDatabase {
     }
 
     actual fun open(password: String): Boolean {
-        if (db != null) error("Database already opened")
+        db?.close()
         val ctx = helper ?: error("SecureDatabase not initialized. Call SecureDatabase.init(context) first.")
 
         return try {
