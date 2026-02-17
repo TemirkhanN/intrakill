@@ -59,7 +59,7 @@ fun LoginScene(component: LoginComponent) {
                 if (state.isLoggingIn) {
                     CircularProgressIndicator()
                 } else {
-                    Text("Unlock Database")
+                    Text("Unlock Storage")
                 }
             }
 
@@ -68,7 +68,14 @@ fun LoginScene(component: LoginComponent) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text("Import Database")
+                Text("Import Storage")
+            }
+            Button(
+                onClick = component::onExportClicked,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("Export Storage")
             }
         }
     }

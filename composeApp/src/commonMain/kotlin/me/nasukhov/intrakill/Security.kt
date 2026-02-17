@@ -13,3 +13,13 @@ object Security {
         false
     }
 }
+
+fun String.validatePassword(): List<String> {
+    val minPasswordLength = 6
+    val violations = mutableListOf<String>()
+    if (this.length < minPasswordLength) {
+        violations.add("Password must be at least $minPasswordLength characters.")
+    }
+
+    return violations
+}

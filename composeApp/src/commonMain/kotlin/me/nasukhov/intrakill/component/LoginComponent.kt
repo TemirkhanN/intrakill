@@ -21,6 +21,7 @@ interface LoginComponent {
     fun onPasswordChanged(newValue: String)
     fun onUnlockClicked()
     fun onImportClicked()
+    fun onExportClicked()
 }
 
 class DefaultLoginComponent(
@@ -59,6 +60,7 @@ class DefaultLoginComponent(
     }
 
     override fun onImportClicked() = navigate(Request.ImportRequested)
+    override fun onExportClicked() = navigate(Request.ExportRequested)
 
     private fun validate(state: LoginState): List<String> {
         val violations = mutableListOf<String>()

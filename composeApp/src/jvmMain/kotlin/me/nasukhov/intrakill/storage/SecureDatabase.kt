@@ -24,9 +24,7 @@ actual object SecureDatabase {
     }
 
     actual fun open(password: String): Boolean {
-        if (connection != null) {
-            throw RuntimeException("Cannot open connection")
-        }
+        connection?.close()
 
         return try {
             val url = "jdbc:sqlite:secured.db"
@@ -42,8 +40,6 @@ actual object SecureDatabase {
                 }
             }
 
-            // TODO not the right place for it
-            DbExporter.start(password)
             true
         } catch (e: Exception) {
             false

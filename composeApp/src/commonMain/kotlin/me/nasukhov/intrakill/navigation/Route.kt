@@ -13,5 +13,6 @@ sealed interface Route {
     @Serializable
     data object AddEntry : Route
     @Serializable
-    data object ImportRequested : Route
+    data object Import : Route
+    data object Export : Route
 }

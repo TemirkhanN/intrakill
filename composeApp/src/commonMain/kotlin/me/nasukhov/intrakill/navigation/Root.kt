@@ -15,10 +15,12 @@ import me.nasukhov.intrakill.component.DefaultImportComponent
 import me.nasukhov.intrakill.component.DefaultListEntriesComponent
 import me.nasukhov.intrakill.component.DefaultLoginComponent
 import me.nasukhov.intrakill.component.DefaultEntryComponent
+import me.nasukhov.intrakill.component.DefaultExportComponent
 import me.nasukhov.intrakill.component.ImportComponent
 import me.nasukhov.intrakill.component.ListEntriesComponent
 import me.nasukhov.intrakill.component.LoginComponent
 import me.nasukhov.intrakill.component.EntryComponent
+import me.nasukhov.intrakill.component.ExportComponent
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -29,6 +31,7 @@ interface RootComponent {
         class View(val component: EntryComponent) : Child()
         class AddEntry(val component: AddEntryComponent) : Child()
         class Import(val component: ImportComponent): Child()
+        class Export(val component: ExportComponent): Child()
     }
 }
 
@@ -54,10 +57,16 @@ class DefaultRootComponent(
                 navigate = ::handleLoginRequests
             )
         )
-        is Route.ImportRequested -> RootComponent.Child.Import(
+        is Route.Import -> RootComponent.Child.Import(
             DefaultImportComponent(
                 context = context,
                 navigate = ::handleImportRequests
+            )
+        )
+        is Route.Export -> RootComponent.Child.Export(
+            DefaultExportComponent(
+                context = context,
+                navigate = ::handleExportRequests
             )
         )
         is Route.List -> RootComponent.Child.List(
@@ -86,7 +95,14 @@ class DefaultRootComponent(
 
     private fun handleLoginRequests(request: Request) = when (request) {
         is Request.ListEntries -> navigation.replaceCurrent(Route.List())
-        is Request.ImportRequested -> navigation.push(Route.ImportRequested)
+        is Request.ImportRequested -> navigation.push(Route.Import)
+        is Request.ExportRequested -> navigation.push(Route.Export)
+        else -> error("The request $request is not supported in this component")
+    }
+
+    private fun handleExportRequests(request: Request) = when (request) {
+        is Request.ListEntries -> navigation.replaceCurrent(Route.List())
+        is Request.Back -> navigation.pop()
         else -> error("The request $request is not supported in this component")
     }
 
