@@ -22,7 +22,7 @@ Now, there still were some edgecases, but I can't stress enough how good that li
 
 So far, it's designed to allow importing entire storage from desktop version within the same local network.  
 Yes, local. I can see no reason to share storage through clouds or with someone else. We have websites for that.  
-> Desktop runs simple webserver once logged in. Importer must provide the IP and the password of the original(desktop) storage.
+> Importer must provide the IP and the password of the original(desktop) storage.
 > Once import it complete, the same password is used to unlock storage on the importer app. 
 
 ### Where is the storage
@@ -45,8 +45,7 @@ A: It's a media storage and is 99% intended for images and video.
 
 Q: Wait, why isn't video attachments supported yet?
 A: I'm truly sorry, but it appears kotlin multiplatform doesn't have out of box solution for media player like flutter does.  
-Due to that I've decided to postpone the implementation until I have more mental capacity to dig through GitHub and docs.  
----
+Due to that I've decided to postpone the implementation until I have more mental capacity to dig through GitHub and docs.
 
 ### Build and Run Android Application
 

@@ -11,7 +11,7 @@ import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.DbImporter
 
 data class ImportState(
-    val ip: String = "",
+    val ip: String = "192.168.0.1",
     val password: String = "",
     val violations: List<String> = emptyList(),
     val isInProgress: Boolean = false,

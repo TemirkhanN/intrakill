@@ -28,7 +28,7 @@ fun ImportScene(component: ImportComponent) {
         OutlinedTextField(
             value = state.ip,
             onValueChange = component::changeIp,
-            label = { Text("Desktop IP") },
+            label = { Text("Source IP") },
             enabled = !state.isInProgress,
             modifier = Modifier.fillMaxWidth()
         )
