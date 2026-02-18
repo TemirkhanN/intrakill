@@ -33,14 +33,15 @@ fun VideoPlayer(attachment: Attachment) {
     if (isLoaded) {
         RealPlayer(attachment)
     } else {
-        Image(
-            bitmap = attachment.preview.asImageBitmap(),
-            contentDescription = "Video Preview",
-            modifier = Modifier.fillMaxSize()
-                .aspectRatio(0.5f)
-                .clickable{ isLoaded = true },
-            contentScale = ContentScale.Crop,
-        )
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Image(
+                bitmap = attachment.preview.asImageBitmap(),
+                contentDescription = "Video Preview",
+                modifier = Modifier
+                    .clickable { isLoaded = true },
+                contentScale = ContentScale.Crop,
+            )
+        }
     }
 }
 
@@ -100,6 +101,7 @@ private fun RealPlayer(attachment: Attachment) {
                         isSeekBarVisible = true,
                         isDurationVisible = true,
                         isAutoHideControlEnabled = true,
+                        isGestureVolumeControlEnabled = false,
                         controlHideIntervalSeconds = 5,
                     )
                 )
