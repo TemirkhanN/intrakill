@@ -3,11 +3,12 @@ package me.nasukhov.intrakill.storage
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.File
 import java.io.OutputStream
-import java.io.OutputStreamWriter
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.Statement
+import kotlin.use
 
 actual object SecureDatabase {
     private const val ID_LENGTH = 36
@@ -354,115 +355,70 @@ actual object SecureDatabase {
 
 private object SqlDumpExporter {
     fun dumpDatabase(conn: Connection, out: OutputStream) {
-        OutputStreamWriter(out, Charsets.UTF_8).use { writer ->
-            writer.append("-- SQLite dump\n")
-            writer.append("PRAGMA foreign_keys=OFF;\n")
+        val unencryptedFile = exportToPlainDatabase(conn)
 
-            dumpSchema(conn, writer)
-            dumpData(conn, writer)
-
-            writer.flush()
-        }
-    }
-
-    private fun dumpSchema(conn: Connection, out: Appendable) {
-        conn.createStatement().use { stmt ->
-            stmt.executeQuery(
-                """
-                    SELECT REPLACE(sql, 'CREATE TABLE "', 'CREATE TABLE IF NOT EXISTS "')
-                    FROM sqlite_master
-                    WHERE sql IS NOT NULL
-                      AND type IN ('table','index','trigger')
-                      AND name NOT LIKE 'sqlite_%'
-                    ORDER BY type='table' DESC, name
-                    """.trimIndent()
-            ).use { rs ->
-                while (rs.next()) {
-                    out.append(rs.getString(1))
-                    out.append(";\n")
+        try {
+            unencryptedFile.inputStream().use { input ->
+                // standard 8KB buffer for streaming
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    out.write(buffer, 0, bytesRead)
                 }
             }
+            out.flush()
+        } finally {
+            unencryptedFile.delete()
         }
     }
 
-    private fun dumpData(conn: Connection, out: Appendable) {
-        conn.createStatement().use { stmt ->
-            stmt.executeQuery(
-                """
-            SELECT name
-            FROM sqlite_master
-            WHERE type='table'
-              AND name NOT LIKE 'sqlite_%'
-            ORDER BY name
-            """.trimIndent()
-            ).use { rs ->
-                while (rs.next()) {
-                    val table = rs.getString(1)
-                    dumpTable(conn, table, out)
-                }
-            }
-        }
-    }
+    fun exportToPlainDatabase(db: Connection): File {
+        val exportTo = File.createTempFile("intrakill_export_", "storage.db")
+        if (exportTo.exists()) exportTo.delete()
 
-    private fun dumpTable(
-        conn: Connection,
-        table: String,
-        out: Appendable
-    ) {
-        conn.createStatement().use { stmt ->
-            stmt.executeQuery("""SELECT * FROM "$table"""").use { rs ->
-                val meta = rs.metaData
-                val cols = meta.columnCount
+        try {
+            val absolutePath = exportTo.absolutePath.replace("'", "''")
+            db.autoCommit = false
 
-                while (rs.next()) {
-                    out.append("""INSERT INTO "$table" VALUES (""")
+            db.createStatement().use { stmt ->
+                stmt.execute("ATTACH DATABASE '$absolutePath' AS plain_db KEY ''")
+                stmt.execute("PRAGMA plain_db.journal_mode = OFF")
 
-                    for (i in 1..cols) {
-                        if (i > 1) out.append(',')
+                db.createStatement().executeQuery(
+                    "SELECT name, sql FROM main.sqlite_master WHERE type='table' AND name NOT REGEXP '^sqlite_'"
+                ).use { rs ->
+                    while (rs.next()) {
+                        val name = rs.getString("name")
+                        val sql = rs.getString("sql")
 
-                        when (meta.getColumnType(i)) {
-                            java.sql.Types.BLOB -> {
-                                val bytes = rs.getBytes(i)
-                                if (bytes == null) {
-                                    out.append("NULL")
-                                } else {
-                                    out.append("X'")
-                                    for (b in bytes) {
-                                        out.append(
-                                            ((b.toInt() and 0xFF) + 0x100)
-                                                .toString(16)
-                                                .substring(1)
-                                        )
-                                    }
-                                    out.append("'")
-                                }
-                            }
-
-                            java.sql.Types.INTEGER,
-                            java.sql.Types.REAL,
-                            java.sql.Types.FLOAT,
-                            java.sql.Types.DOUBLE,
-                            java.sql.Types.NUMERIC -> {
-                                val v = rs.getString(i)
-                                out.append(v ?: "NULL")
-                            }
-
-                            else -> {
-                                val v = rs.getString(i)
-                                if (v == null) {
-                                    out.append("NULL")
-                                } else {
-                                    out.append('\'')
-                                    out.append(v.replace("'", "''"))
-                                    out.append('\'')
-                                }
-                            }
-                        }
+                        val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+TABLE\\s+(\"?)".toRegex(), "CREATE TABLE plain_db.$1")
+                        stmt.execute(redirectedSql)
+                        stmt.execute("INSERT INTO plain_db.\"$name\" SELECT * FROM main.\"$name\"")
                     }
-
-                    out.append(");\n")
                 }
+
+                db.createStatement().executeQuery(
+                    "SELECT type, sql FROM main.sqlite_master WHERE type IN ('index', 'trigger', 'view') AND name NOT REGEXP '^sqlite_'"
+                ).use { rs ->
+                    while (rs.next()) {
+                        val type = rs.getString("type").uppercase()
+                        val sql = rs.getString("sql")
+
+                        val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+$type\\s+(\"?)".toRegex(), "CREATE $type plain_db.$1")
+                        stmt.execute(redirectedSql)
+                    }
+                }
+
+                db.commit()
+                stmt.execute("DETACH DATABASE plain_db")
             }
+        } catch (e: Exception) {
+            db.rollback()
+            throw e
+        } finally {
+            db.autoCommit = true
         }
+
+        return exportTo
     }
 }

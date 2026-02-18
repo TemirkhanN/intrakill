@@ -1,8 +1,6 @@
 package me.nasukhov.intrakill.storage
 
 import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Attachment
@@ -47,81 +45,23 @@ actual object SecureDatabase {
         val context = helper!!.ctx
         SQLiteDatabase.loadLibs(context)
 
-        context.deleteDatabase(DB_NAME)
+        val dbPath = context.getDatabasePath(DB_NAME)
+        if (dbPath.exists()) dbPath.delete()
 
-        val db = SQLiteDatabase.openOrCreateDatabase(
-            context.getDatabasePath(DB_NAME),
-            password,
-            null
-        )
+        val plainDb = SQLiteDatabase.openOrCreateDatabase(file.absolutePath, "", null)
 
-        db.beginTransaction()
         try {
-            val statementAccumulator = StringBuilder()
-            file.bufferedReader().use { reader ->
-                reader.forEachLine { line ->
-                    val trimmed = line.trim()
+            val escapedTargetPath = dbPath.absolutePath.replace("'", "''")
+            plainDb.execSQL("ATTACH DATABASE '$escapedTargetPath' AS encrypted_db KEY '$password'")
+            // extension can not be invoked by execSQL nor query and requires rawExecSQL
+            plainDb.rawExecSQL("SELECT sqlcipher_export('encrypted_db')")
+            plainDb.execSQL("DETACH DATABASE encrypted_db")
 
-                    // 1. Skip comments and empty lines immediately
-                    if (trimmed.isEmpty() || trimmed.startsWith("--")) return@forEachLine
-
-                    // 2. Accumulate the line
-                    statementAccumulator.append(line).append("\n")
-
-                    // 3. Only execute when we hit a semicolon at the end of a line
-                    if (trimmed.endsWith(";")) {
-                        val fullStatement = statementAccumulator.toString().trim()
-                        db.execSQL(fullStatement)
-                        statementAccumulator.setLength(0)
-                    }
-                }
-            }
-            db.setTransactionSuccessful()
+            return dbPath.length() > 0
         } catch (e: Exception) {
             return false
         } finally {
-            db.endTransaction()
-            db.close()
-        }
-
-        return true
-    }
-
-    suspend fun import(
-        sqlDump: String,
-        password: String,
-    ): Boolean = withContext(Dispatchers.IO) {
-        val context = helper!!.ctx
-        try {
-            SQLiteDatabase.loadLibs(context)
-
-            // Delete old DB
-            context.deleteDatabase(DB_NAME)
-
-            val db = SQLiteDatabase.openOrCreateDatabase(
-                context.getDatabasePath(DB_NAME),
-                password,
-                null
-            )
-
-            db.beginTransaction()
-            try {
-                sqlDump
-                    .split(";\n")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .forEach { db.execSQL(it) }
-
-                db.setTransactionSuccessful()
-            } finally {
-                db.endTransaction()
-                db.close()
-            }
-
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
+            plainDb.close()
         }
     }
 

@@ -11,7 +11,7 @@ import java.net.URL
 actual object DbImporter {
     actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val tempFile = File(DbFileResolver.ctx.cacheDir, "import_temp.sql")
+            val tempFile = File(DbFileResolver.ctx.cacheDir, "unencrypted.db")
 
             downloadDumpToFile(ip, port, password, tempFile)
 
