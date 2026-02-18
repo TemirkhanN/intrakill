@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,12 +48,7 @@ fun AttachmentView(
             }
             MediaKind.VIDEO -> {
                 Box(modifier = Modifier.aspectRatio(1f)) {
-                    Image(
-                        bitmap = attachment.preview.asImageBitmap(),
-                        contentDescription = "Video Preview",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
+                    VideoPlayer(attachment)
                 }
             }
             else -> {

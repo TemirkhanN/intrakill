@@ -44,6 +44,7 @@ kotlin {
             implementation(libs.decompose)
             implementation(libs.ext.compose)
             implementation(libs.kotlinx.serialization.json)
+            implementation("network.chaintech:compose-multiplatform-media-player:1.0.53")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

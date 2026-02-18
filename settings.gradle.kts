@@ -25,6 +25,8 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        // Resolves dependencies for chaintech video player
+        maven("https://jogamp.org/deployment/maven")
     }
 }
 
