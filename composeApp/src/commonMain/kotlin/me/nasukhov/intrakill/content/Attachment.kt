@@ -10,7 +10,8 @@ data class Attachment(
     val content: ByteArray,
     val preview: ByteArray,
     val id: String = UUID.randomUUID().toString(),
-    val hashsum: ByteArray = hasher.digest(content)
+    val hashsum: ByteArray = hasher.digest(content),
+    val isPersisted: Boolean = false,
 ) {
     val mediaKind: MediaKind = mimeType.mediaKind()
 

@@ -47,48 +47,16 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun saveEntry(entry: Entry) {
+    actual fun saveEntry(entry: Entry): Entry {
         db.autoCommit = false
         try {
-            val stmt = db.prepareStatement("INSERT INTO entry(id, name, preview) VALUES(?, ?, ?)")
-            stmt.use {
-                stmt.setString(1, entry.id) // TODO
-                stmt.setString(2, entry.name)
-                stmt.setBytes(3, entry.preview) // TODO
-                stmt.executeUpdate()
-
-                // Now insert attachments
-                val attachStmt = db.prepareStatement(
-                    "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
-                )
-                attachStmt.use { aStmt ->
-                    for (a in entry.attachments) {
-                        aStmt.setString(1, a.id)
-                        aStmt.setString(2, entry.id)
-                        aStmt.setBytes(3, a.content)
-                        aStmt.setBytes(4, a.preview)
-                        aStmt.setString(5, a.mimeType)
-                        aStmt.setBytes(6, a.hashsum)
-                        aStmt.addBatch()
-                    }
-                    aStmt.executeBatch()
-                }
-
-                // Insert tags
-                val tagStmt = db.prepareStatement(
-                    "INSERT INTO tags(entry_id, tag) VALUES (?, ?)"
-                )
-                tagStmt.use { t ->
-                    for (tag in entry.tags) {
-                        t.setString(1, entry.id)
-                        t.setString(2, tag)
-                        t.addBatch()
-                    }
-                    t.executeBatch()
-                }
+            if (entry.isPersisted) {
+                updateEntry(entry)
+            } else {
+                createEntry(entry)
             }
 
-            db.commit()
+            return getById(entry.id)
         } catch (e: Exception) {
             db.rollback()
             throw e
@@ -97,6 +65,105 @@ actual object SecureDatabase {
         }
     }
 
+    private fun updateEntry(entry: Entry) {
+        check(entry.isPersisted) { "Attempt to update non-existent entry" }
+        val oldEntry = getById(entry.id)
+
+        // NOTE: update currently doesn't mutate name, preview and other props. Only tags and attachments.
+        // Just for the sake of simplicity.
+
+        val removedTags = oldEntry.tags.minus(entry.tags)
+        if (!removedTags.isEmpty()) {
+            val removedTagsPlaceholder = removedTags.joinToString(",") { "?" }
+            db.prepareStatement("DELETE FROM tags WHERE entry_id=? ANd tag IN ($removedTagsPlaceholder)")
+                .use { stmt ->
+                    var placeholderPosition = 1
+                    stmt.setString(placeholderPosition++, entry.id)
+                    removedTags.forEach { removedTag ->
+                        stmt.setString(placeholderPosition++, removedTag)
+                    }
+                    stmt.executeUpdate()
+                }
+        }
+
+        val addedTags = entry.tags.minus(oldEntry.tags)
+        db.prepareStatement("INSERT INTO tags(entry_id, tag) VALUES (?, ?)").use { stmt ->
+            for (tag in addedTags) {
+                stmt.setString(1, entry.id)
+                stmt.setString(2, tag)
+                stmt.addBatch()
+            }
+            stmt.executeBatch()
+        }
+
+        val remainingAttachmentIds = entry.attachments.joinToString(",") { "?" }
+        db.prepareStatement("DELETE FROM attachment WHERE entry_id=? AND id NOT IN ($remainingAttachmentIds)").use { stmt ->
+            var placeholderPosition = 1
+            stmt.setString(placeholderPosition++, entry.id)
+            entry.attachments.forEach { remainingAttachment ->
+               stmt.setString(placeholderPosition++, remainingAttachment.id)
+            }
+            stmt.executeUpdate()
+        }
+
+        db.prepareStatement(
+            "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
+        ).use { stmt ->
+            for (a in entry.attachments.filter { !it.isPersisted }) {
+                stmt.setString(1, a.id)
+                stmt.setString(2, entry.id)
+                stmt.setBytes(3, a.content)
+                stmt.setBytes(4, a.preview)
+                stmt.setString(5, a.mimeType)
+                stmt.setBytes(6, a.hashsum)
+                stmt.addBatch()
+            }
+            stmt.executeBatch()
+        }
+    }
+
+    private fun createEntry(entry: Entry) {
+        check(!entry.isPersisted) { "Duplicate entry creation attempt" }
+        val stmt = db.prepareStatement("INSERT INTO entry(id, name, preview) VALUES(?, ?, ?)")
+        stmt.use {
+            stmt.setString(1, entry.id) // TODO
+            stmt.setString(2, entry.name)
+            stmt.setBytes(3, entry.preview) // TODO
+            stmt.executeUpdate()
+
+            // Now insert attachments
+            val attachStmt = db.prepareStatement(
+                "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
+            )
+            attachStmt.use { aStmt ->
+                for (a in entry.attachments) {
+                    aStmt.setString(1, a.id)
+                    aStmt.setString(2, entry.id)
+                    aStmt.setBytes(3, a.content)
+                    aStmt.setBytes(4, a.preview)
+                    aStmt.setString(5, a.mimeType)
+                    aStmt.setBytes(6, a.hashsum)
+                    aStmt.addBatch()
+                }
+                aStmt.executeBatch()
+            }
+
+            // Insert tags
+            val tagStmt = db.prepareStatement(
+                "INSERT INTO tags(entry_id, tag) VALUES (?, ?)"
+            )
+            tagStmt.use { t ->
+                for (tag in entry.tags) {
+                    t.setString(1, entry.id)
+                    t.setString(2, tag)
+                    t.addBatch()
+                }
+                t.executeBatch()
+            }
+        }
+
+        db.commit()
+    }
     actual fun countEntries(filter: EntriesFilter): Int {
         val hasTags = filter.tags.isNotEmpty()
 
@@ -190,7 +257,8 @@ actual object SecureDatabase {
                             name = rs.getString("name"),
                             preview = rs.getBytes("preview"),
                             attachments = LazyList { listAttachments(id) },
-                            tags = LazySet { listTags(id) }
+                            tags = LazySet { listTags(id) },
+                            isPersisted = true,
                         )
                     )
                 }
@@ -229,7 +297,8 @@ actual object SecureDatabase {
                 name = rs.getString("name"),
                 preview = rs.getBytes("preview"),
                 attachments = LazyList { listAttachments(id) },
-                tags = LazySet { listTags(id) }
+                tags = LazySet { listTags(id) },
+                isPersisted = true,
             )
         }
     }
@@ -252,6 +321,7 @@ actual object SecureDatabase {
                         content = rs.getBytes("content"),
                         preview = rs.getBytes("preview"),
                         id = rs.getString("id"),
+                        isPersisted = true,
                     )
                 )
             }

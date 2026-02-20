@@ -12,7 +12,7 @@ data class EntriesFilter(
 expect object SecureDatabase {
     fun open(password: String): Boolean
 
-    fun saveEntry(entry: Entry)
+    fun saveEntry(entry: Entry): Entry
 
     fun findEntries(filter: EntriesFilter): List<Entry>
     fun countEntries(filter: EntriesFilter): Int

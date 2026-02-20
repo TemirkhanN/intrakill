@@ -69,7 +69,7 @@ fun AddEntryScene(component: AddEntryComponent) {
         )
 
         TagsInput(
-            allTags = state.knownTags,
+            knownTags = state.knownTags,
             onTagsChanged = component::changeTags,
             isEnabled = !state.isSaving
         )

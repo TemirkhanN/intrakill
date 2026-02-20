@@ -34,14 +34,15 @@ import kotlin.collections.plus
 
 @Composable
 fun TagsInput(
-    allTags: Set<Tag>,
+    knownTags: Set<Tag>,
+    selectedTags: Set<String> = emptySet(),
     modifier: Modifier = Modifier,
     onTagsChanged: (Set<String>) -> Unit,
     isEnabled: Boolean = true,
     maxSuggestions: Int = 6,
     tagsDelimiter: String = ","
 ) {
-    var finalizedTags by remember { mutableStateOf(emptySet<String>()) }
+    var finalizedTags by remember { mutableStateOf(selectedTags) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
 
     val focusRequester = remember { FocusRequester() }
@@ -51,11 +52,11 @@ fun TagsInput(
     val currentText = textFieldValue.text
     val currentPrefix = currentText.substringAfterLast(tagsDelimiter).trim().lowercase()
 
-    val suggestions = remember(currentPrefix, finalizedTags, allTags) {
-        allTags.asSequence()
+    val suggestions = remember(currentPrefix, finalizedTags, knownTags) {
+        knownTags.asSequence()
             .map { it.name.lowercase() }
             .filter { it !in finalizedTags && it.startsWith(currentPrefix) && it != currentPrefix }
-            .sortedByDescending { tag -> allTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
+            .sortedByDescending { tag -> knownTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
             .take(maxSuggestions)
             .toList()
     }

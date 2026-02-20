@@ -78,7 +78,7 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun saveEntry(entry: Entry) {
+    actual fun saveEntry(entry: Entry): Entry {
         val db = db ?: error("DB not opened")
         db.beginTransaction()
         try {
@@ -113,6 +113,8 @@ actual object SecureDatabase {
             }
 
             db.setTransactionSuccessful()
+
+            return entry
         } finally {
             db.endTransaction()
         }
@@ -202,7 +204,8 @@ actual object SecureDatabase {
                         name = c.getString(nameCol),
                         preview = c.getBlob(previewCol),
                         attachments = LazyList { listAttachments(id) },
-                        tags = LazySet { listTags(id) }
+                        tags = LazySet { listTags(id) },
+                        isPersisted = true,
                     )
                 )
             }
@@ -225,7 +228,8 @@ actual object SecureDatabase {
                 name = c.getString(c.getColumnIndexOrThrow("name")),
                 preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
                 attachments = LazyList { listAttachments(entryId) },
-                tags = LazySet { listTags(entryId) }
+                tags = LazySet { listTags(entryId) },
+                isPersisted = true,
             )
         }
     }
@@ -251,7 +255,8 @@ actual object SecureDatabase {
                     mimeType = c.getString(c.getColumnIndexOrThrow("mime_type")),
                     content = c.getBlob(c.getColumnIndexOrThrow("content")),
                     preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                    hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum"))
+                    hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum")),
+                    isPersisted = true,
                 )
             }
         }

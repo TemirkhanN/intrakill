@@ -7,5 +7,6 @@ data class Entry(
     val preview: ByteArray,
     val attachments: List<Attachment>,
     val tags: Set<String> = emptySet(),
-    val id: String = UUID.randomUUID().toString()
+    val id: String = UUID.randomUUID().toString(),
+    val isPersisted: Boolean = false
 )

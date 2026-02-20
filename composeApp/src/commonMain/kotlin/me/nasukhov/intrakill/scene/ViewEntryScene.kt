@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.view.AttachmentView
 import me.nasukhov.intrakill.component.EntryComponent
+import me.nasukhov.intrakill.view.ReturnButton
+import me.nasukhov.intrakill.view.TagsInput
 
 @Composable
 fun ViewEntryScene(component: EntryComponent) {
@@ -21,6 +23,7 @@ fun ViewEntryScene(component: EntryComponent) {
 
     Crossfade(targetState = state.isLoading) { isLoading ->
         val currentEntry = state.entry
+        val isEditing = state.isEditing
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -48,13 +51,11 @@ fun ViewEntryScene(component: EntryComponent) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    TextButton(onClick = component::onReturnClicked) {
-                        Text("← Back")
-                    }
+                    ReturnButton(component::onReturnClicked)
                     TextButton(onClick = component::toggleEditMode) {
-                        Text(if (state.isEditing) "View mode" else "Edit mode")
+                        Text(if (isEditing) "View mode" else "Edit mode")
                     }
-                    if (state.isEditing) {
+                    if (isEditing) {
                         TextButton(onClick = component::deleteEntry) {
                             Text("Delete entirely")
                         }
@@ -62,26 +63,33 @@ fun ViewEntryScene(component: EntryComponent) {
                 }
 
                 item {
-                    TagList(
-                        tags = currentEntry.tags,
-                        onTagsChanged = component::onTagsChanged
-                    )
+                    if (isEditing) {
+                        TagsInput(
+                            knownTags = state.knownTags,
+                            selectedTags = currentEntry.tags,
+                            onTagsChanged = component::changeTags,
+                            isEnabled = !state.isSaving
+                        )
+                    } else {
+                        TagList(
+                            tags = currentEntry.tags,
+                            onTagsChanged = component::onTagsChanged
+                        )
+                    }
                 }
 
                 items(currentEntry.attachments) { attachment ->
                     AttachmentView(
                         attachment,
-                        editMode = state.isEditing,
-                        onMoveUp = {},
-                        onMoveDown = {},
-                        onDelete = {}
+                        editMode = isEditing,
+                        onMoveUp = {}, // TODO
+                        onMoveDown = {}, // TODO
+                        onDelete = { if (currentEntry.attachments.size > 1) { component.deleteAttachment(attachment) } },
                     )
                 }
 
                 item {
-                    TextButton(onClick = component::onReturnClicked) {
-                        Text("← Back")
-                    }
+                    ReturnButton(component::onReturnClicked)
                 }
             }
         }
