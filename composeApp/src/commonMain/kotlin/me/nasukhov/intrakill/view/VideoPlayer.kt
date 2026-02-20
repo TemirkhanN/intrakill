@@ -67,32 +67,31 @@ private fun RealPlayer(attachment: Attachment) {
         }
     }
 
-    when {
-        isWritingFile -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16 / 9f),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            isWritingFile -> {
                 CircularProgressIndicator()
             }
-        }
-        error.isNotEmpty() || tempFile == null -> {
-            PageError(error)
-        }
-        else -> {
-            val file = tempFile!!
-            val playerHost = remember(file.absolutePath) {
-                MediaPlayerHost(
-                    mediaUrl = file.absolutePath,
-                    isMuted = false,
-                    autoPlay = true,
-                    isLooping = false,
-                )
+
+            error.isNotEmpty() || tempFile == null -> {
+                PageError(error)
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16 / 9f),
-                contentAlignment = Alignment.Center
-            ) {
+            else -> {
+                val file = tempFile!!
+                val playerHost = remember(file.absolutePath) {
+                    MediaPlayerHost(
+                        mediaUrl = file.absolutePath,
+                        isMuted = false,
+                        autoPlay = true,
+                        isLooping = false,
+                    )
+                }
                 VideoPlayerComposable(
                     modifier = Modifier.fillMaxSize(),
                     playerHost = playerHost,
@@ -105,12 +104,11 @@ private fun RealPlayer(attachment: Attachment) {
                         controlHideIntervalSeconds = 5,
                     )
                 )
-            }
-
-            DisposableEffect(playerHost) {
-                onDispose {
-                    playerHost.pause()
-                    file.delete()
+                DisposableEffect(playerHost) {
+                    onDispose {
+                        playerHost.pause()
+                        file.delete()
+                    }
                 }
             }
         }
