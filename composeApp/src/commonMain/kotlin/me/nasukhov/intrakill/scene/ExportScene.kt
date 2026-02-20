@@ -54,6 +54,14 @@ fun ExportScene(component: ExportComponent) {
                 )
             }
 
+            if (state.isEnabled) {
+                Text(
+                    text = "Running on ${state.ip}:${state.port}",
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
             // Prevent stopping an ongoing export process
             Button(
                 onClick = if (state.isEnabled) component::disable else component::enable,

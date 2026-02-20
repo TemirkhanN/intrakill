@@ -30,6 +30,7 @@ kotlin {
             implementation(libs.androidx.sqlite)
             implementation(libs.androidx.sqlite.framework)
             implementation(libs.android.database.sqlcipher)
+            implementation("io.ktor:ktor-server-cio:3.4.0")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -45,6 +46,8 @@ kotlin {
             implementation(libs.ext.compose)
             implementation(libs.kotlinx.serialization.json)
             implementation("network.chaintech:compose-multiplatform-media-player:1.0.53")
+
+            implementation("io.ktor:ktor-server-core:3.4.0")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -53,7 +56,6 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.desktop.database.sqlcipher)
-            implementation("io.ktor:ktor-server-core:3.4.0")
             implementation("io.ktor:ktor-server-netty:3.4.0")
             //implementation("io.ktor:ktor-client-core:2.3.5")      // commonMain HTTP client
             //implementation("io.ktor:ktor-client-cio:2.3.5")       // JVM/desktop engine

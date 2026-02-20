@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import me.nasukhov.intrakill.getLocalIpAddress
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.storage.DbExporter
 import me.nasukhov.intrakill.storage.ExportProcess
@@ -12,6 +13,7 @@ import me.nasukhov.intrakill.validatePassword
 data class ExportState(
     val password: String = "",
     val port: Int = 8080,
+    val ip: String = "",
     val isEnabled: Boolean = false,
     val isInProgress: Boolean = false,
     val errors: List<String> = emptyList(),
@@ -42,7 +44,7 @@ class DefaultExportComponent(
 
     private val params = MutableValue(ExportParams())
 
-    private val mutableState = MutableValue(ExportState())
+    private val mutableState = MutableValue(ExportState(ip = getLocalIpAddress()))
     override val state: Value<ExportState> = mutableState
 
     init {

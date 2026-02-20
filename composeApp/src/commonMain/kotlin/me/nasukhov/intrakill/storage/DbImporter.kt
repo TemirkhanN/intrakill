@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import java.io.File
 
+// TODO rename into FileResolver and adjust usages accordingly
 expect object DbFileResolver {
     fun resolve(dbName: String): File
 }
