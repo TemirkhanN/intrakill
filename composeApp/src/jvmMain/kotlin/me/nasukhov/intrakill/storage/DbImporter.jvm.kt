@@ -26,13 +26,14 @@ actual object DbImporter {
 
                 when (connection.responseCode) {
                     HttpURLConnection.HTTP_OK -> {
-                        val targetFile = DbFileResolver.resolve("secured.db")
+                        val tmpFile = File.createTempFile("intrakill_", "_unencrypted.db").also { it.deleteOnExit() }
                         connection.inputStream.use { input ->
-                            targetFile.outputStream().use { output ->
+                            tmpFile.outputStream().use { output ->
                                 input.copyTo(output)
                             }
                         }
-                        true
+
+                        SecureDatabase.importFromFile(tmpFile, password).also { tmpFile.delete() }
                     }
                     HttpURLConnection.HTTP_FORBIDDEN -> {
                         println("Import failed: Incorrect password/token rejected by server.")
@@ -49,6 +50,7 @@ actual object DbImporter {
         }
 }
 
+// TODO use this instead of interacting with the db directly.
 actual object DbFileResolver {
     actual fun resolve(dbName: String): File {
         val dir = File(System.getProperty("user.home"), ".Intrakill")

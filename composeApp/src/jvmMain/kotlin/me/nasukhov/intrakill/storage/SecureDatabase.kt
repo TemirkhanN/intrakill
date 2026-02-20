@@ -11,6 +11,7 @@ import java.sql.Statement
 import kotlin.use
 
 actual object SecureDatabase {
+    private const val DB_NAME = "secured.db"
     private const val ID_LENGTH = 36
 
     private var connection: Connection? = null
@@ -24,11 +25,42 @@ actual object SecureDatabase {
         }
     }
 
+    fun importFromFile(file: File, password: String): Boolean {
+        try {
+            // 1. Close the current encrypted connection so we can swap files
+            connection?.let {
+                if (!it.isClosed) {
+                    it.close()
+                }
+            }
+
+            // 2. Replace the current DB file with the unencrypted import file
+            val targetFile = File(DB_NAME)
+            if (targetFile.exists()) targetFile.delete()
+            file.copyTo(targetFile)
+
+            // 3. Open the connection to the PLAINTEXT file
+            // We use the configuration WITHOUT a key as per Willena's instructions
+            val url = "jdbc:sqlite:${DB_NAME}"
+            DriverManager.getConnection(url).apply {
+                createStatement().use { stmt ->
+                    val escapedPass = password.replace("'", "''")
+                    stmt.execute("PRAGMA rekey = '${escapedPass}'")
+                }
+                close()
+            }
+
+            return open(password)
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
     actual fun open(password: String): Boolean {
         connection?.close()
 
         return try {
-            val url = "jdbc:sqlite:secured.db"
+            val url = "jdbc:sqlite:${DB_NAME}"
             connection = DriverManager.getConnection(url, null, password).apply {
                 createStatement().use { stmt ->
                     stmt.execute("PRAGMA cipher_memory_security = ON;")
