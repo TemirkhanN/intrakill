@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import com.arkivanov.essenty.backhandler.BackCallback
 import me.nasukhov.intrakill.getLocalIpAddress
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.storage.DbExporter
@@ -54,6 +55,8 @@ class DefaultExportComponent(
                 port = newParams.port,
             ) }
         }
+
+        context.backHandler.register(BackCallback(onBack = ::close))
     }
 
     override fun setPassword(password: String) {

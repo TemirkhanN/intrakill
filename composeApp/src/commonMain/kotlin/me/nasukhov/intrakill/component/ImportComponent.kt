@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import com.arkivanov.essenty.backhandler.BackCallback
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.navigation.Request
@@ -23,7 +24,7 @@ interface ImportComponent {
     fun changeIp(ip: String)
     fun changePassword(password: String)
 
-    fun onReturnClicked()
+    fun close()
     fun import()
 }
 
@@ -39,6 +40,10 @@ class DefaultImportComponent(
     private val localIpPattern = """(127|192)\.\d{1,3}\.\d{1,3}\.\d{1,3}""".toRegex()
 
     private val minPasswordLength = 6
+
+    init {
+        context.backHandler.register(BackCallback(onBack = ::close))
+    }
 
     override fun changeIp(ip: String) {
         mutableState.update { it.copy(ip = ip, violations = emptyList()) }
@@ -82,7 +87,7 @@ class DefaultImportComponent(
         }
     }
 
-    override fun onReturnClicked() {
+    override fun close() {
         if (state.value.isInProgress) return
         navigate(Request.Back)
     }

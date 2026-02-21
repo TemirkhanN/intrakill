@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import com.arkivanov.essenty.backhandler.BackCallback
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
@@ -24,7 +25,7 @@ data class EntryState(
 interface EntryComponent {
     val state: Value<EntryState>
 
-    fun onReturnClicked()
+    fun close()
 
     fun deleteEntry()
 
@@ -56,9 +57,11 @@ class DefaultEntryComponent(
                 knownTags = knownTags,
             ) }
         }
+
+        context.backHandler.register(BackCallback(onBack = ::close))
     }
 
-    override fun onReturnClicked() {
+    override fun close() {
         navigate(Request.Back)
     }
 

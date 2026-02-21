@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import com.arkivanov.essenty.backhandler.BackCallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -20,7 +21,7 @@ interface AddEntryComponent {
     fun changeName(name: String)
     fun changeTags(newTags: Set<String>)
     fun save()
-    fun cancel()
+    fun close()
     fun promptAttachmentSelection()
     fun removeAttachment(attachmentIndex: Int)
     fun moveAttachmentUpwards(attachmentIndex: Int)
@@ -52,9 +53,11 @@ class DefaultAddEntryComponent(
 
             mutableState.value = freshState
         }
+
+        context.backHandler.register(BackCallback(onBack = ::close))
     }
 
-    override fun cancel() {
+    override fun close() {
         navigate(Request.Back)
     }
 

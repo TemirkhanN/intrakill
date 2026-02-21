@@ -7,7 +7,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -17,6 +16,7 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.view.AttachmentView
 import me.nasukhov.intrakill.view.TagsInput
 import me.nasukhov.intrakill.component.AddEntryComponent
+import me.nasukhov.intrakill.view.ReturnButton
 
 @Composable
 fun AddEntryScene(component: AddEntryComponent) {
@@ -27,9 +27,7 @@ fun AddEntryScene(component: AddEntryComponent) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        TextButton(onClick = component::cancel) {
-            Text("← Cancel")
-        }
+        ReturnButton(component::close)
 
         Button(
             enabled = !state.isSaving,

@@ -68,7 +68,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Paginator(
                         offset = state.offset,
-                        maxEntriesPerPage = 12,
+                        maxEntriesPerPage = state.entriesPerPage,
                         total = searchResult.outOfTotal,
                         onOffsetChange = component::onOffsetChanged
                     )

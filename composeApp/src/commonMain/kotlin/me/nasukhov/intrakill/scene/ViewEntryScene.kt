@@ -38,9 +38,7 @@ fun ViewEntryScene(component: EntryComponent) {
             ) {
                 Column {
                     Text("Entry does not exist. It was probably deleted")
-                    TextButton(onClick = component::onReturnClicked) {
-                        Text("← Back")
-                    }
+                    ReturnButton(component::close)
                 }
             }
         } else {
@@ -51,7 +49,7 @@ fun ViewEntryScene(component: EntryComponent) {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
-                    ReturnButton(component::onReturnClicked)
+                    ReturnButton(component::close)
                     TextButton(onClick = component::toggleEditMode) {
                         Text(if (isEditing) "View mode" else "Edit mode")
                     }
@@ -89,7 +87,7 @@ fun ViewEntryScene(component: EntryComponent) {
                 }
 
                 item {
-                    ReturnButton(component::onReturnClicked)
+                    ReturnButton(component::close)
                 }
             }
         }

@@ -15,6 +15,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.ImportComponent
+import me.nasukhov.intrakill.view.ReturnButton
 
 @Composable
 fun ImportScene(component: ImportComponent) {
@@ -54,13 +55,7 @@ fun ImportScene(component: ImportComponent) {
             }
         }
 
-        Button(
-            onClick = component::onReturnClicked,
-            enabled = !state.isInProgress,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Back")
-        }
+        ReturnButton(component::close)
 
         if (!state.violations.isEmpty()) {
             Text(

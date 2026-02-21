@@ -4,6 +4,7 @@ import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
+import com.arkivanov.essenty.backhandler.BackCallback
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -15,13 +16,20 @@ import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.asFlow
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
+import kotlin.math.max
 
 data class ListState(
     val filteredByTags: Set<String> = emptySet(),
     val offset: Int = 0,
+    val entriesPerPage: Int = 12,
     val searchResult: EntriesSearchResult? = null,
     val isSearching: Boolean = false,
-)
+) {
+    init {
+        check(entriesPerPage > 0)
+        check(offset >= 0)
+    }
+}
 
 interface ListEntriesComponent {
     val state: Value<ListState>
@@ -81,6 +89,16 @@ class DefaultListEntriesComponent(
         }
 
         refreshKnownTags()
+
+        context.backHandler.register(BackCallback(onBack = {
+            state.value.let {
+                // Unless we're already on the very first page, move backwards.
+                if (it.offset != 0) {
+                    val previousPageOffset = max(it.offset - it.entriesPerPage, 0)
+                    onOffsetChanged(previousPageOffset)
+                }
+            }
+        }))
     }
 
     override fun onTagsChanged(tags: Set<String>) {
