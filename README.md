@@ -22,7 +22,8 @@ Now, there still were some edgecases, but I can't stress enough how good that li
 
 So far, it's designed to allow importing entire storage from desktop version within the same local network.  
 Yes, local. I can see no reason to share storage through clouds or with someone else. We have websites for that.  
-> Importer must provide the IP and the password of the original(desktop) storage.
+> Importer must provide the IP and the password of the original(desktop) storage.  
+> You can find it once you turn on exporting on the origin device.  
 > Once import it complete, the same password is used to unlock storage on the importer app. 
 
 ### Where is the storage
@@ -32,7 +33,8 @@ Well, it's a shame, but I just dump it in `composeApp/secured.db` in project roo
 
 #### Android
 On Android it goes under `context.getDatabasePath("secured.db")`, so it's up to android OS to decide where the file is  
-stored. In any case, it's sqlcipher database file, so you have little to nothing to worry about.
+stored. Basically, it means, file will end up in the system folder designated for our app.  
+In any case, it's sqlcipher database file, so you have little to nothing to worry about.
 
 
 ## Questions and Answers
@@ -42,10 +44,6 @@ A: I don't have practical reasons to implement iOS version since I don't have a 
 
 Q: Is it possible to store files other than images?  
 A: It's a media storage and is 99% intended for images and video.
-
-Q: Wait, why isn't video attachments supported yet?
-A: I'm truly sorry, but it appears kotlin multiplatform doesn't have out of box solution for media player like flutter does.  
-Due to that I've decided to postpone the implementation until I have more mental capacity to dig through GitHub and docs.
 
 ### Build and Run Android Application
 
@@ -77,4 +75,5 @@ in your IDE’s toolbar or run it directly from the terminal:
 
 ### Contributions
 
-Contributions of any sort is welcome.
+Contributions of any sort are welcome.  
+If you know how to improve the app or provide better UX, open an issue or a pull request.  
