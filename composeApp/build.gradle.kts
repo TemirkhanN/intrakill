@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
-    kotlin("plugin.serialization") version "2.3.10"
+    alias(libs.plugins.serialization)
 }
 
 kotlin {
@@ -25,29 +25,29 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation(compose.preview)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.sqlite)
             implementation(libs.androidx.sqlite.framework)
             implementation(libs.android.database.sqlcipher)
-            implementation("io.ktor:ktor-server-cio:3.4.0")
+            implementation(libs.ktor.server.android)
         }
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.preview)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.ui)
+            implementation(libs.components.resources)
+            implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.jbcrypt)
             implementation(libs.decompose)
             implementation(libs.ext.compose)
             implementation(libs.kotlinx.serialization.json)
-            implementation("network.chaintech:compose-multiplatform-media-player:1.0.53")
+            implementation(libs.compose.multiplatform.media.player)
 
-            implementation("io.ktor:ktor-server-core:3.4.0")
+            implementation(libs.ktor.server.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -56,9 +56,7 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.desktop.database.sqlcipher)
-            implementation("io.ktor:ktor-server-netty:3.4.0")
-            //implementation("io.ktor:ktor-client-core:2.3.5")      // commonMain HTTP client
-            //implementation("io.ktor:ktor-client-cio:2.3.5")       // JVM/desktop engine
+            implementation(libs.ktor.server.desktop)
         }
     }
 }
@@ -91,7 +89,7 @@ android {
 }
 
 dependencies {
-    debugImplementation(compose.uiTooling)
+    debugImplementation(libs.compose.ui.tooling)
 }
 
 compose.desktop {
