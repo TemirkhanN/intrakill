@@ -1,22 +1,19 @@
 package me.nasukhov.intrakill.view
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -25,7 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -47,7 +43,6 @@ fun TagsInput(
 
     val focusRequester = remember { FocusRequester() }
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
 
     val currentText = textFieldValue.text
     val currentPrefix = currentText.substringAfterLast(tagsDelimiter).trim().lowercase()
@@ -59,6 +54,37 @@ fun TagsInput(
             .sortedByDescending { tag -> knownTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
             .take(maxSuggestions)
             .toList()
+    }
+
+    if (isEnabled && suggestions.isNotEmpty()) {
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+            ) {
+                suggestions.forEach { tag ->
+                    key(tag) {
+                        FilterChip(
+                            modifier = Modifier.padding(4.dp),
+                            selected = false,
+                            label = { Text("+ $tag") },
+                            onClick = {
+                                val newSet = finalizedTags + tag
+                                finalizedTags = newSet
+
+                                onTagsChanged(newSet)
+
+                                // TODO make configurable? Currently, it seems to be better if suggestions stay
+                                //textFieldValue = TextFieldValue("", TextRange(0))
+
+                                focusRequester.requestFocus()
+                            },
+                        )
+                    }
+                }
+            }
+        }
     }
 
     Column(modifier) {
@@ -100,7 +126,7 @@ fun TagsInput(
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -114,43 +140,6 @@ fun TagsInput(
                             onTagsChanged(finalizedTags)
                         }
                     )
-                }
-            }
-        }
-
-        if (isEnabled && isFocused && suggestions.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
-            ) {
-                suggestions.forEach { tag ->
-                    key(tag) {
-                        Text(
-                            text = tag,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pointerInput(tag) {
-                                    awaitEachGesture {
-                                        awaitFirstDown()
-
-                                        // 1. Update local finalized set
-                                        val newSet = finalizedTags + tag
-                                        finalizedTags = newSet
-
-                                        // 2. Clear the text field for the next tag
-                                        textFieldValue = TextFieldValue("", TextRange(0))
-
-                                        // 3. Notify parent
-                                        onTagsChanged(newSet)
-
-                                        focusRequester.requestFocus()
-                                    }
-                                }
-                                .padding(12.dp)
-                        )
-                    }
                 }
             }
         }
