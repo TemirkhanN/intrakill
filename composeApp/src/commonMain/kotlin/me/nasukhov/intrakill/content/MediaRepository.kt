@@ -14,9 +14,7 @@ object MediaRepository {
 
     // A shared signal that fires whenever entries change
     // replay = 1 ensures new subscribers get the latest update immediately
-    private val _updates = MutableSharedFlow<Unit>(replay = 1).apply {
-        tryEmit(Unit)
-    }
+    private val _updates = MutableSharedFlow<Unit>(replay = 1)
     val updates: Flow<Unit> = _updates
 
     private fun notifyChanged() {
