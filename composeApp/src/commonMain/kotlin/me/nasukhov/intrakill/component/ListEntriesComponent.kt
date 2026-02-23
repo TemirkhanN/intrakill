@@ -17,6 +17,7 @@ import me.nasukhov.intrakill.scene.asFlow
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
 import kotlin.math.max
+import kotlin.time.measureTime
 
 data class ListState(
     val filteredByTags: Set<String> = emptySet(),

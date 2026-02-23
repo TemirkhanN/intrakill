@@ -40,7 +40,7 @@ fun AttachmentView(
         when (attachment.mediaKind) {
             MediaKind.IMAGE -> {
                 Image(
-                    bitmap = attachment.content.asImageBitmap(),
+                    bitmap = attachment.content.readBytes().asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth(),
                     contentScale = ContentScale.FillWidth

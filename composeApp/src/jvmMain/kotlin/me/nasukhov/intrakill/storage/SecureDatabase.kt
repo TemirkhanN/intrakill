@@ -1,9 +1,11 @@
 package me.nasukhov.intrakill.storage
 
 import me.nasukhov.intrakill.content.Attachment
+import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
 import java.io.File
+import java.io.InputStream
 import java.io.OutputStream
 import java.sql.Connection
 import java.sql.DriverManager
@@ -146,7 +148,7 @@ actual object SecureDatabase {
             for (a in entry.attachments.filter { !it.isPersisted }) {
                 stmt.setString(1, a.id)
                 stmt.setString(2, entry.id)
-                stmt.setBytes(3, a.content)
+                stmt.setBinaryStream(3, a.content.read())
                 stmt.setBytes(4, a.preview)
                 stmt.setString(5, a.mimeType)
                 stmt.setBytes(6, a.hashsum)
@@ -173,7 +175,7 @@ actual object SecureDatabase {
                 for (a in entry.attachments) {
                     aStmt.setString(1, a.id)
                     aStmt.setString(2, entry.id)
-                    aStmt.setBytes(3, a.content)
+                    aStmt.setBinaryStream(3, a.content.read())
                     aStmt.setBytes(4, a.preview)
                     aStmt.setString(5, a.mimeType)
                     aStmt.setBytes(6, a.hashsum)
@@ -339,7 +341,7 @@ actual object SecureDatabase {
 
     private fun listAttachments(entryId: String): List<Attachment> {
         val sql = """
-                SELECT * FROM attachment
+                SELECT id, mime_type, preview, hashsum FROM attachment
                 WHERE entry_id = ?
         """
 
@@ -349,12 +351,14 @@ actual object SecureDatabase {
             stmt.setString(1, entryId)
             val rs = stmt.executeQuery()
             while (rs.next()) {
+                val attachmentId = rs.getString("id")
                 result.add(
                     Attachment(
                         mimeType = rs.getString("mime_type"),
-                        content = rs.getBytes("content"),
+                        content = Content { getContent(attachmentId) },
                         preview = rs.getBytes("preview"),
-                        id = rs.getString("id"),
+                        id = attachmentId,
+                        hashsum = rs.getBytes("hashsum"),
                         isPersisted = true,
                     )
                 )
@@ -455,6 +459,18 @@ actual object SecureDatabase {
                         CREATE INDEX IF NOT EXISTS idx_tags_entry ON tags(entry_id);
                     """
         )
+    }
+
+    private fun getContent(attachmentId: String): InputStream =
+        db.prepareStatement("SELECT content FROM attachment WHERE id = ?")
+            .use { stmt ->
+        stmt.setString(1, attachmentId)
+
+        val rs = stmt.executeQuery()
+        if (!rs.next()) {
+            throw IllegalStateException("Couldn't find attachment with id=$attachmentId")
+        }
+        return rs.getBinaryStream(1)
     }
 }
 
