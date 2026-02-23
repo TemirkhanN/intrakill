@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import me.nasukhov.intrakill.scene.asImageBitmap
 
 expect object FilePicker {
-    suspend fun pickMultiple(): List<PickedMedia>
+    suspend fun pickMultiple(): List<Result<PickedMedia>>
 }
 
 enum class MediaKind {

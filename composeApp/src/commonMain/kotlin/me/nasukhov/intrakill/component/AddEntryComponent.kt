@@ -78,18 +78,24 @@ class DefaultAddEntryComponent(
     override fun promptAttachmentSelection() {
         scope.launch {
             val picked = FilePicker.pickMultiple()
-            val newAttachments = picked.map {
+            val newAttachments = picked.filter{ it.isSuccess }.map { result ->
+                val it = result.getOrThrow()
                 Attachment(
                     mimeType = it.mimeType,
                     content = it.bytes,
                     preview = it.rawPreview,
                 )
             }
+            val violations = picked.filter { it.isFailure }.map { it.exceptionOrNull()!!.message ?: "Unknown error" }
             if (!newAttachments.isEmpty()) {
                 mutableState.update { it.copy(
                     attachments = newAttachments,
-                    violations = emptyList(),
+                    violations = violations,
                 ) }
+            } else if (violations.isNotEmpty()) {
+                mutableState.update { it.copy(
+                    violations = violations,
+                )}
             }
         }
     }

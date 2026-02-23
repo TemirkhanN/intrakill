@@ -25,7 +25,7 @@ import androidx.core.graphics.createBitmap
 actual object FilePicker {
     internal var delegate: AndroidFilePickerDelegate? = null
 
-    actual suspend fun pickMultiple(): List<PickedMedia> =
+    actual suspend fun pickMultiple(): List<Result<PickedMedia>> =
         delegate?.pickMultiple()
             ?: error("FilePicker not initialized. Wrap your UI in ProvideFilePicker().")
 }
@@ -34,7 +34,7 @@ actual object FilePicker {
  * Internal delegate interface for Android file picking.
  */
 internal interface AndroidFilePickerDelegate {
-    suspend fun pickMultiple(): List<PickedMedia>
+    suspend fun pickMultiple(): List<Result<PickedMedia>>
 }
 
 /**
@@ -46,10 +46,12 @@ internal interface AndroidFilePickerDelegate {
 actual fun ProvideFilePicker(
     content: @Composable () -> Unit
 ) {
+    // TODO this is an architectural flow consequence preventing too big files. Those should go in stream mode
+    val maxAllowedFileSize: FileSize = 100 * 1024 * 1024
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var continuation by remember { mutableStateOf<((List<PickedMedia>) -> Unit)?>(null) }
+    var continuation by remember { mutableStateOf<((List<Result<PickedMedia>>) -> Unit)?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
@@ -62,7 +64,12 @@ actual fun ProvideFilePicker(
         scope.launch {
             val result = withContext(Dispatchers.IO) {
                 uris.mapNotNull { uri ->
-                    readPickedMedia(context.contentResolver, uri)
+                    val fileSize = context.contentResolver.getFileSize(uri)
+                    if (fileSize != null && fileSize > maxAllowedFileSize) {
+                        Result.failure(Exception("Files is too big (${fileSize.MB()} out of ${maxAllowedFileSize.MB()}"))
+                    } else {
+                        context.contentResolver.readPickedMedia(uri)
+                    }
                 }
             }
             cont(result)
@@ -71,7 +78,7 @@ actual fun ProvideFilePicker(
 
     val delegate = remember {
         object : AndroidFilePickerDelegate {
-            override suspend fun pickMultiple(): List<PickedMedia> =
+            override suspend fun pickMultiple(): List<Result<PickedMedia>> =
                 suspendCancellableCoroutine { cont ->
                     continuation = cont::resume
                     launcher.launch(arrayOf("*/*"))
