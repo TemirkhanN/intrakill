@@ -4,9 +4,12 @@ import android.content.Context
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Attachment
+import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.InputStream
 import java.io.OutputStream
 import kotlin.use
 
@@ -160,12 +163,13 @@ actual object SecureDatabase {
                 arrayOf(
                     a.id,
                     entry.id,
-                    a.content,
+                    ByteArray(0),
                     a.preview,
                     a.mimeType,
                     a.hashsum
                 )
             )
+            writeContent(a.id, a.content)
         }
 
         entry.tags.forEach { tag ->
@@ -211,12 +215,13 @@ actual object SecureDatabase {
                 arrayOf(
                     a.id,
                     entry.id,
-                    a.content,
+                    ByteArray(0),
                     a.preview,
                     a.mimeType,
                     a.hashsum
                 )
             )
+            writeContent(a.id, a.content)
         }
     }
 
@@ -347,14 +352,15 @@ actual object SecureDatabase {
         val result = mutableListOf<Attachment>()
 
         db.rawQuery(
-            "SELECT * FROM attachment WHERE entry_id = ?",
+            "SELECT id, mime_type, preview, hashsum FROM attachment WHERE entry_id = ?",
             arrayOf(entryId)
         ).use { c ->
             while (c.moveToNext()) {
+                val attachmentId = c.getString(c.getColumnIndexOrThrow("id"))
                 result += Attachment(
-                    id = c.getString(c.getColumnIndexOrThrow("id")),
+                    id = attachmentId,
                     mimeType = c.getString(c.getColumnIndexOrThrow("mime_type")),
-                    content = c.getBlob(c.getColumnIndexOrThrow("content")),
+                    content = getContent(attachmentId),
                     preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
                     hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum")),
                     isPersisted = true,
@@ -442,5 +448,131 @@ actual object SecureDatabase {
             );
             """
         )
+    }
+
+    private fun getContent(attachmentId: String) = Content { BufferedInputStream(SQLiteBlobInputStream(db!!, attachmentId), 8 * 1024 * 1024) }
+
+    private fun writeContent(attachmentId: String, content: Content) {
+        val db = db ?: error("DB not opened")
+
+        db.beginTransaction()
+        try {
+            val buffer = ByteArray(64 * 1024)
+
+            content.read().use { input ->
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) break
+
+                    val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
+
+                    db.execSQL(
+                        """
+                    UPDATE attachment
+                    SET content = content || ?
+                    WHERE id = ?
+                    """.trimIndent(),
+                        arrayOf(chunk, attachmentId)
+                    )
+                }
+            }
+
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+}
+
+private class SQLiteBlobInputStream(
+    private val db: SQLiteDatabase,
+    private val attachmentId: String
+) : InputStream() {
+    companion object {
+        private const val MB = 1024 * 1024
+        private const val BIG_BLOG_SIZE = 10 * MB
+    }
+
+    private val totalSize: Long by lazy {
+        db.rawQuery(
+            "SELECT length(content) FROM attachment WHERE id=?",
+            arrayOf(attachmentId)
+        ).use { c ->
+            if (!c.moveToFirst()) 0L else c.getLong(0)
+        }
+    }
+
+    private val chunkSize: Int by lazy { if (totalSize >= BIG_BLOG_SIZE) 8 * MB else 1 * MB }
+
+    private var position = 1L // SQLite substr is 1-based
+    private var buffer = ByteArray(0)
+    private var bufferPos = 0
+    private var eof = false
+    private var closed = false
+
+    override fun read(): Int {
+        if (closed) throw IllegalStateException("Stream closed")
+        if (!ensureData()) return -1
+        return buffer[bufferPos++].toInt() and 0xFF
+    }
+
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (closed) throw IllegalStateException("Stream closed")
+
+        if (off < 0 || len < 0 || off + len > b.size)
+            throw IndexOutOfBoundsException()
+
+        if (len == 0) return 0
+
+        if (!ensureData()) return -1
+
+        val available = buffer.size - bufferPos
+        if (available <= 0) return -1   // critical safety
+
+        val toCopy = minOf(len, available)
+        System.arraycopy(buffer, bufferPos, b, off, toCopy)
+        bufferPos += toCopy
+        return toCopy
+    }
+
+    override fun close() {
+        closed = true
+        buffer = ByteArray(0)
+    }
+
+    private fun ensureData(): Boolean {
+        if (bufferPos < buffer.size) return true
+        if (eof) return false
+        if (closed) return false
+
+        val remaining = totalSize - (position - 1)
+        if (remaining <= 0) {
+            eof = true
+            return false
+        }
+
+        val requestSize = minOf(chunkSize.toLong(), remaining).toInt()
+
+        val chunk: ByteArray? = db.rawQuery(
+            """
+            SELECT substr(content, ?, ?)
+            FROM attachment
+            WHERE id=?
+            """.trimIndent(),
+            arrayOf(position.toString(), requestSize.toString(), attachmentId)
+        ).use { c ->
+            if (!c.moveToFirst()) null else c.getBlob(0)
+        }
+
+        // treat null OR empty as EOF (important)
+        if (chunk == null || chunk.isEmpty()) {
+            eof = true
+            return false
+        }
+
+        buffer = chunk
+        bufferPos = 0
+        position += chunk.size
+        return true
     }
 }

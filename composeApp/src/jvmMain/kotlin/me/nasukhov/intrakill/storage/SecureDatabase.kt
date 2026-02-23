@@ -4,8 +4,8 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.BufferedInputStream
 import java.io.File
-import java.io.InputStream
 import java.io.OutputStream
 import java.sql.Connection
 import java.sql.DriverManager
@@ -355,7 +355,7 @@ actual object SecureDatabase {
                 result.add(
                     Attachment(
                         mimeType = rs.getString("mime_type"),
-                        content = Content { getContent(attachmentId) },
+                        content = getContent(attachmentId),
                         preview = rs.getBytes("preview"),
                         id = attachmentId,
                         hashsum = rs.getBytes("hashsum"),
@@ -461,16 +461,18 @@ actual object SecureDatabase {
         )
     }
 
-    private fun getContent(attachmentId: String): InputStream =
+    private fun getContent(attachmentId: String): Content = Content {
         db.prepareStatement("SELECT content FROM attachment WHERE id = ?")
             .use { stmt ->
-        stmt.setString(1, attachmentId)
+                stmt.setString(1, attachmentId)
 
-        val rs = stmt.executeQuery()
-        if (!rs.next()) {
-            throw IllegalStateException("Couldn't find attachment with id=$attachmentId")
-        }
-        return rs.getBinaryStream(1)
+                val rs = stmt.executeQuery()
+                if (!rs.next()) {
+                    throw IllegalStateException("Couldn't find attachment with id=$attachmentId")
+                }
+
+                BufferedInputStream(rs.getBinaryStream(1), 4 * 1024 * 1024)
+            }
     }
 }
 

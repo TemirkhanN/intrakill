@@ -22,7 +22,6 @@ class Content {
         this.resolver = resolver
     }
 
-    // TODO what if stream is already closed?
     fun read(): InputStream = resolver()
 
     fun readBytes(): ByteArray = resolver().readBytes()
