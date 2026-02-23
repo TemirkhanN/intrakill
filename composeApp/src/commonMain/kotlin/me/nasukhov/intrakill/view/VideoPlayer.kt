@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import me.nasukhov.intrakill.content.Attachment
 import chaintech.videoplayer.host.MediaPlayerHost
+import chaintech.videoplayer.model.ScreenResize
 import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import chaintech.videoplayer.model.VideoPlayerConfig
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,7 @@ fun VideoPlayer(attachment: Attachment) {
                 contentDescription = "Video Preview",
                 modifier = Modifier
                     .clickable { isLoaded = true },
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.None,
             )
         }
     }
@@ -69,8 +70,8 @@ private fun RealPlayer(attachment: Attachment) {
 
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16 / 9f),
+            .fillMaxSize()
+            .aspectRatio(1f),
         contentAlignment = Alignment.Center
     ) {
         when {
@@ -90,6 +91,7 @@ private fun RealPlayer(attachment: Attachment) {
                         isMuted = false,
                         autoPlay = true,
                         isLooping = false,
+                        initialVideoFitMode = ScreenResize.FIT
                     )
                 }
                 VideoPlayerComposable(

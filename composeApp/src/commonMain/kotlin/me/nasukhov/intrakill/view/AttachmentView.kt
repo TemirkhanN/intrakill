@@ -47,9 +47,7 @@ fun AttachmentView(
                 )
             }
             MediaKind.VIDEO -> {
-                Box(modifier = Modifier.aspectRatio(1f)) {
-                    VideoPlayer(attachment)
-                }
+                VideoPlayer(attachment)
             }
             else -> {
                 Box(
