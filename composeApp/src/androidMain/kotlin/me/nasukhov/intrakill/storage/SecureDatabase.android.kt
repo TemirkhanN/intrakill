@@ -123,43 +123,103 @@ actual object SecureDatabase {
         val db = db ?: error("DB not opened")
         db.beginTransaction()
         try {
-            db.execSQL(
-                "INSERT INTO entry(id, name, preview) VALUES(?,?,?)",
-                arrayOf(entry.id, entry.name, entry.preview)
-            )
+            val updated = if (entry.isPersisted) {
+                updateEntry(entry)
 
-            entry.attachments.forEach { a ->
-                db.execSQL(
-                    """
+                true
+            } else {
+                createEntry(entry)
+
+                false
+            }
+
+            db.setTransactionSuccessful()
+
+            return if (updated) getById(entry.id) else entry
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun createEntry(entry: Entry) {
+        val db = db ?: error("DB not opened")
+        check(!entry.isPersisted) { "Duplicate entry creation attempt" }
+
+        db.execSQL(
+            "INSERT INTO entry(id, name, preview) VALUES(?,?,?)",
+            arrayOf(entry.id, entry.name, entry.preview)
+        )
+
+        entry.attachments.forEach { a ->
+            db.execSQL(
+                """
                     INSERT INTO attachment
                     (id, entry_id, content, preview, mime_type, hashsum)
                     VALUES (?,?,?,?,?,?)
                     """.trimIndent(),
-                    arrayOf(
-                        a.id,
-                        entry.id,
-                        a.content,
-                        a.preview,
-                        a.mimeType,
-                        a.hashsum
-                    )
+                arrayOf(
+                    a.id,
+                    entry.id,
+                    a.content,
+                    a.preview,
+                    a.mimeType,
+                    a.hashsum
                 )
-            }
+            )
+        }
 
-            entry.tags.forEach { tag ->
+        entry.tags.forEach { tag ->
+            db.execSQL(
+                "INSERT INTO tags(entry_id, tag) VALUES (?,?)",
+                arrayOf(entry.id, tag)
+            )
+        }
+    }
+
+    private fun updateEntry(entry: Entry) {
+        val db = db ?: error("DB not opened")
+        check(entry.isPersisted) { "Attempt to update non-existent entry" }
+        val oldEntry = getById(entry.id)
+
+
+        val removedTags = oldEntry.tags.minus(entry.tags)
+        if (!removedTags.isEmpty()) {
+            val removedTagsPlaceholder = removedTags.joinToString(",") { "?" }
+            db.execSQL("DELETE FROM tags WHERE entry_id=? ANd tag IN ($removedTagsPlaceholder)")
+        }
+
+        val addedTags = entry.tags.minus(oldEntry.tags)
+        if (!addedTags.isEmpty()) {
+            addedTags.forEach { tag ->
                 db.execSQL(
                     "INSERT INTO tags(entry_id, tag) VALUES (?,?)",
                     arrayOf(entry.id, tag)
                 )
             }
+        }
 
-            db.setTransactionSuccessful()
+        val remainingAttachmentIds = entry.attachments.joinToString(",") { "?" }
+        db.execSQL("DELETE FROM attachment WHERE entry_id=? AND id NOT IN ($remainingAttachmentIds)")
 
-            return entry
-        } finally {
-            db.endTransaction()
+        entry.attachments.filter { !it.isPersisted }.forEach { a ->
+            db.execSQL(
+                """
+                    INSERT INTO attachment
+                    (id, entry_id, content, preview, mime_type, hashsum)
+                    VALUES (?,?,?,?,?,?)
+                    """.trimIndent(),
+                arrayOf(
+                    a.id,
+                    entry.id,
+                    a.content,
+                    a.preview,
+                    a.mimeType,
+                    a.hashsum
+                )
+            )
         }
     }
+
     actual fun countEntries(filter: EntriesFilter): Int {
         val db = db ?: error("DB not opened")
         val args = mutableListOf<String>()
@@ -314,6 +374,7 @@ actual object SecureDatabase {
             SELECT tag, COUNT(*) as frequency
             FROM tags
             GROUP BY tag
+            ORDER BY frequency DESC
             """.trimIndent(),
             null
         ).use { c ->

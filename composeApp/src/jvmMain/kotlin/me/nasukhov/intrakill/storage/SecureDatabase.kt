@@ -119,13 +119,15 @@ actual object SecureDatabase {
         }
 
         val addedTags = entry.tags.minus(oldEntry.tags)
-        db.prepareStatement("INSERT INTO tags(entry_id, tag) VALUES (?, ?)").use { stmt ->
-            for (tag in addedTags) {
-                stmt.setString(1, entry.id)
-                stmt.setString(2, tag)
-                stmt.addBatch()
+        if (!addedTags.isEmpty()) {
+            db.prepareStatement("INSERT INTO tags(entry_id, tag) VALUES (?, ?)").use { stmt ->
+                for (tag in addedTags) {
+                    stmt.setString(1, entry.id)
+                    stmt.setString(2, tag)
+                    stmt.addBatch()
+                }
+                stmt.executeBatch()
             }
-            stmt.executeBatch()
         }
 
         val remainingAttachmentIds = entry.attachments.joinToString(",") { "?" }
@@ -369,6 +371,7 @@ actual object SecureDatabase {
                     COUNT(*) as frequency
                 FROM tags
                 GROUP BY tag
+                ORDER BY frequency DESC
         """
 
         val result = mutableSetOf<Tag>()

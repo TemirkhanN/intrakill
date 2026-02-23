@@ -9,4 +9,8 @@ data class Entry(
     val tags: Set<String> = emptySet(),
     val id: String = UUID.randomUUID().toString(),
     val isPersisted: Boolean = false
-)
+) {
+    init {
+        require(!attachments.isEmpty()) { "Entry must have at least one attachment." }
+    }
+}
