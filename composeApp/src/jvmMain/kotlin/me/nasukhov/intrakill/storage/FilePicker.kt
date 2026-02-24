@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.nasukhov.intrakill.content.Content
 import java.io.File
 import java.nio.file.Files
 import javax.swing.JFileChooser
@@ -19,7 +20,7 @@ actual object FilePicker {
                 try {
                     Result.success(PickedMedia(
                         name = file.name,
-                        bytes = file.readBytes(),
+                        content = Content { file.inputStream() },
                         mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
                     ))
                 } catch (e: Exception) {

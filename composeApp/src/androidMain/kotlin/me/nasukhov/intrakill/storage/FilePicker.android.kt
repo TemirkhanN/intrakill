@@ -17,6 +17,7 @@ import java.io.ByteArrayOutputStream
 import kotlin.coroutines.resume
 import kotlin.math.min
 import androidx.core.graphics.createBitmap
+import me.nasukhov.intrakill.content.Content
 
 /**
  * Cross-platform FilePicker.
@@ -46,7 +47,7 @@ internal interface AndroidFilePickerDelegate {
 actual fun ProvideFilePicker(
     content: @Composable () -> Unit
 ) {
-    // TODO this is an architectural flow consequence preventing too big files. Those should go in stream mode
+    // TODO this is an architectural flow consequence preventing too big files
     val maxAllowedFileSize: FileSize = 100 * 1024 * 1024
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -96,23 +97,23 @@ actual fun ProvideFilePicker(
 
 
 actual fun generatePreviewBytes(
-    bytes: ByteArray,
+    content: Content,
     mimeType: String,
     previewSize: Int
 ): ByteArray =
     when (mimeType.mediaKind()) {
         MediaKind.IMAGE, MediaKind.GIF ->
-            generateImagePreviewAndroid(bytes, previewSize)
+            generateImagePreviewAndroid(content, previewSize)
 
         MediaKind.VIDEO ->
             generateVideoPlaceholder(previewSize)
     }
 
 private fun generateImagePreviewAndroid(
-    bytes: ByteArray,
+    content: Content,
     maxSize: Int
 ): ByteArray {
-    val src = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    val src = BitmapFactory.decodeStream(content.read())
         ?: error("Bitmap decode failed")
 
     val scale = min(

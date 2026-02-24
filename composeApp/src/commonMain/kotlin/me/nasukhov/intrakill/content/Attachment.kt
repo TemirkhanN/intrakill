@@ -7,16 +7,7 @@ import java.security.MessageDigest
 import java.util.UUID
 
 class Content {
-
     private val resolver: () -> InputStream
-
-    constructor(content: ByteArray) {
-        resolver = { content.inputStream() }
-    }
-
-    constructor(stream: InputStream) {
-        resolver = { stream }
-    }
 
     constructor(resolver: () -> InputStream) {
         this.resolver = resolver
@@ -24,7 +15,7 @@ class Content {
 
     fun read(): InputStream = resolver()
 
-    fun readBytes(): ByteArray = resolver().readBytes()
+    fun readBytes(): ByteArray = resolver().use { it.readBytes() }
 }
 
 data class Attachment(

@@ -126,19 +126,15 @@ actual object SecureDatabase {
         val db = db ?: error("DB not opened")
         db.beginTransaction()
         try {
-            val updated = if (entry.isPersisted) {
+            if (entry.isPersisted) {
                 updateEntry(entry)
-
-                true
             } else {
                 createEntry(entry)
-
-                false
             }
 
             db.setTransactionSuccessful()
 
-            return if (updated) getById(entry.id) else entry
+            return getById(entry.id)
         } finally {
             db.endTransaction()
         }
@@ -163,7 +159,7 @@ actual object SecureDatabase {
                 arrayOf(
                     a.id,
                     entry.id,
-                    ByteArray(0),
+                    a.content.readBytes(),
                     a.preview,
                     a.mimeType,
                     a.hashsum
@@ -215,7 +211,7 @@ actual object SecureDatabase {
                 arrayOf(
                     a.id,
                     entry.id,
-                    ByteArray(0),
+                    a.content.readBytes(),
                     a.preview,
                     a.mimeType,
                     a.hashsum
@@ -453,34 +449,28 @@ actual object SecureDatabase {
     private fun getContent(attachmentId: String) = Content { BufferedInputStream(SQLiteBlobInputStream(db!!, attachmentId), 8 * 1024 * 1024) }
 
     private fun writeContent(attachmentId: String, content: Content) {
+        /*
         val db = db ?: error("DB not opened")
 
-        db.beginTransaction()
-        try {
-            val buffer = ByteArray(64 * 1024)
+        val buffer = ByteArray(8 * 1024 * 1024)
 
-            content.read().use { input ->
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read <= 0) break
+        content.read().use { input ->
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
 
-                    val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
-
-                    db.execSQL(
-                        """
-                    UPDATE attachment
-                    SET content = content || ?
-                    WHERE id = ?
-                    """.trimIndent(),
-                        arrayOf(chunk, attachmentId)
-                    )
-                }
+                val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
+                db.execSQL(
+                    """
+                UPDATE attachment
+                SET content = content || ?
+                WHERE id = ?
+                """.trimIndent(),
+                    arrayOf(chunk, attachmentId)
+                )
             }
-
-            db.setTransactionSuccessful()
-        } finally {
-            db.endTransaction()
         }
+         */
     }
 }
 
@@ -502,7 +492,9 @@ private class SQLiteBlobInputStream(
         }
     }
 
-    private val chunkSize: Int by lazy { if (totalSize >= BIG_BLOG_SIZE) 8 * MB else 1 * MB }
+    private val chunkSize: Int by lazy {
+        if (totalSize >= BIG_BLOG_SIZE) 8 * MB else 1 * MB
+    }
 
     private var position = 1L // SQLite substr is 1-based
     private var buffer = ByteArray(0)

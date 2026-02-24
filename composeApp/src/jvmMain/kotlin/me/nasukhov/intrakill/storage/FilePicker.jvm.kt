@@ -1,6 +1,7 @@
 package me.nasukhov.intrakill.storage
 
 import androidx.compose.runtime.Composable
+import me.nasukhov.intrakill.content.Content
 import org.jetbrains.skia.*
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -8,13 +9,13 @@ import javax.imageio.ImageIO
 import kotlin.math.min
 
 actual fun generatePreviewBytes(
-    bytes: ByteArray,
+    content: Content,
     mimeType: String,
     previewSize: Int
 ): ByteArray =
     when (mimeType.mediaKind()) {
         MediaKind.IMAGE, MediaKind.GIF ->
-            generateImagePreviewSkia(bytes, previewSize)
+            generateImagePreviewSkia(content.read().readBytes(), previewSize)
 
         MediaKind.VIDEO ->
             generateVideoPlaceholder(previewSize)

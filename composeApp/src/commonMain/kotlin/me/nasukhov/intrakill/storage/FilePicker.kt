@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
+import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.scene.asImageBitmap
 
 expect object FilePicker {
@@ -22,19 +23,19 @@ fun String.mediaKind() = when {
 }
 
 expect fun generatePreviewBytes(
-    bytes: ByteArray,
+    content: Content,
     mimeType: String,
     previewSize: Int
 ): ByteArray
 
 data class PickedMedia(
     val name: String,
-    val bytes: ByteArray,
+    val content: Content,
     val mimeType: String,
     val previewSize: Int = 512
 ) {
     val rawPreview by lazy {
-        generatePreviewBytes(bytes, mimeType, previewSize)
+        generatePreviewBytes(content, mimeType, previewSize)
     }
 
     val preview: ImageBitmap by lazy {

@@ -3,6 +3,7 @@ package me.nasukhov.intrakill.storage
 import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
+import me.nasukhov.intrakill.content.Content
 
 typealias FileSize = Long
 
@@ -15,12 +16,9 @@ internal fun ContentResolver.readPickedMedia(uri: Uri): Result<PickedMedia> = tr
 
     val mime = this.getType(uri) ?: "application/octet-stream"
 
-    val bytes = this.openInputStream(uri)?.use { it.readBytes() }
-        ?: throw Exception("Can't read selected file ${uri.getFileName()}")
-
     Result.success(PickedMedia(
         name = name,
-        bytes = bytes,
+        content = Content { this.openInputStream(uri) ?: throw Exception("Can't read selected file ${uri.getFileName()}") },
         mimeType = mime
     ))
 } catch (e: Exception) {

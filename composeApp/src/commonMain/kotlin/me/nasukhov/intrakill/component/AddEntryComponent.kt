@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.content.Attachment
-import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
@@ -83,7 +82,7 @@ class DefaultAddEntryComponent(
                 val it = result.getOrThrow()
                 Attachment(
                     mimeType = it.mimeType,
-                    content = Content(it.bytes), // TODO original source must be stream too
+                    content = it.content,
                     preview = it.rawPreview,
                 )
             }
