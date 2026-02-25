@@ -36,16 +36,14 @@ actual object DbImporter {
                         SecureDatabase.importFromFile(tmpFile, password).also { tmpFile.delete() }
                     }
                     HttpURLConnection.HTTP_FORBIDDEN -> {
-                        println("Import failed: Incorrect password/token rejected by server.")
-                        false
+                        throw IllegalStateException("Import failed: Incorrect password/token rejected by server.")
                     }
                     else -> {
-                        println("Import failed: Server returned ${connection.responseCode}")
-                        false
+                        throw IllegalStateException("Import failed: Server returned ${connection.responseCode}")
                     }
                 }
             } catch (e: Exception) {
-                false
+                throw e
             }
         }
 }
