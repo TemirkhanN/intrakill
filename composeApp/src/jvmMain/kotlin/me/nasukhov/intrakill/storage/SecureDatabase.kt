@@ -9,12 +9,10 @@ import java.io.File
 import java.io.OutputStream
 import java.sql.Connection
 import java.sql.DriverManager
-import java.sql.Statement
 import kotlin.use
 
 actual object SecureDatabase {
     private const val DB_NAME = "secured.db"
-    private const val ID_LENGTH = 36
 
     private var connection: Connection? = null
 
@@ -71,7 +69,7 @@ actual object SecureDatabase {
                     // Force key validation
                     stmt.execute("SELECT count(*) FROM sqlite_master;")
 
-                    migrate(stmt)
+                    Migrator().migrate(SQLAdapterJVM(this))
                 }
             }
 
@@ -143,7 +141,7 @@ actual object SecureDatabase {
         }
 
         db.prepareStatement(
-            "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
+            "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?,?)"
         ).use { stmt ->
             for (a in entry.attachments.filter { !it.isPersisted }) {
                 stmt.setString(1, a.id)
@@ -152,6 +150,7 @@ actual object SecureDatabase {
                 stmt.setBytes(4, a.preview)
                 stmt.setString(5, a.mimeType)
                 stmt.setBytes(6, a.hashsum)
+                stmt.setLong(7, a.size)
                 stmt.addBatch()
             }
             stmt.executeBatch()
@@ -169,7 +168,7 @@ actual object SecureDatabase {
 
             // Now insert attachments
             val attachStmt = db.prepareStatement(
-                "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum) VALUES (?,?,?,?,?,?)"
+                "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?,?)"
             )
             attachStmt.use { aStmt ->
                 for (a in entry.attachments) {
@@ -179,6 +178,7 @@ actual object SecureDatabase {
                     aStmt.setBytes(4, a.preview)
                     aStmt.setString(5, a.mimeType)
                     aStmt.setBytes(6, a.hashsum)
+                    aStmt.setLong(7, a.size)
                     aStmt.addBatch()
                 }
                 aStmt.executeBatch()
@@ -341,7 +341,7 @@ actual object SecureDatabase {
 
     private fun listAttachments(entryId: String): List<Attachment> {
         val sql = """
-                SELECT id, mime_type, preview, hashsum FROM attachment
+                SELECT id, mime_type, `size`, preview, hashsum FROM attachment
                 WHERE entry_id = ?
         """
 
@@ -352,11 +352,13 @@ actual object SecureDatabase {
             val rs = stmt.executeQuery()
             while (rs.next()) {
                 val attachmentId = rs.getString("id")
+                val size = rs.getLong("size")
                 result.add(
                     Attachment(
                         mimeType = rs.getString("mime_type"),
                         content = getContent(attachmentId),
                         preview = rs.getBytes("preview"),
+                        size = size,
                         id = attachmentId,
                         hashsum = rs.getBytes("hashsum"),
                         isPersisted = true,
@@ -412,53 +414,6 @@ actual object SecureDatabase {
         }
 
         return result
-    }
-
-    private fun migrate(stmt: Statement) {
-        // First launch → create tables
-        stmt.execute(
-            """
-                    CREATE TABLE IF NOT EXISTS entry (
-                        id TEXT PRIMARY KEY CHECK(length(id) = $ID_LENGTH),
-                        `name` TEXT NOT NULL,
-                        preview BLOB NOT NULL,
-                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_entry_created_at ON entry(created_at);
-                    CREATE INDEX IF NOT EXISTS idx_entry_name ON entry(`name`);
-                    """
-        )
-
-        stmt.execute(
-            """
-                    CREATE TABLE IF NOT EXISTS attachment (
-                        id TEXT PRIMARY KEY CHECK(length(entry_id) = $ID_LENGTH),
-                        entry_id INTEGER NOT NULL,
-                        content BLOB NOT NULL,
-                        preview BLOB NOT NULL,
-                        mime_type TEXT NOT NULL CHECK(length(mime_type) > 5),
-                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        hashsum BLOB NOT NULL,
-                        FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_attachment_entry ON attachment(entry_id);
-                    CREATE INDEX IF NOT EXISTS idx_attachment_entry_created ON attachment(entry_id, created_at);
-                    CREATE INDEX IF NOT EXISTS idx_attachment_hashsum ON attachment(hashsum);
-                    """
-        )
-
-        stmt.execute(
-            """
-                        CREATE TABLE IF NOT EXISTS tags (
-                            entry_id TEXT NOT NULL CHECK(length(entry_id) = $ID_LENGTH),
-                            tag TEXT NOT NULL CHECK(length(tag) <= 32),
-                            PRIMARY KEY (entry_id, tag),
-                            FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
-                        );
-                        CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
-                        CREATE INDEX IF NOT EXISTS idx_tags_entry ON tags(entry_id);
-                    """
-        )
     }
 
     private fun getContent(attachmentId: String): Content = Content {
@@ -543,5 +498,38 @@ private object SqlDumpExporter {
         }
 
         return exportTo
+    }
+}
+
+private class SQLAdapterJVM(private val connection: Connection): SQLAdapter {
+    override fun exec(sql: String) {
+        connection.createStatement().use { stmt ->
+            stmt.execute(sql)
+        }
+    }
+
+    override fun transactional(block: SQLAdapter.() -> Unit) {
+        connection.autoCommit = false
+        try {
+            block()
+            connection.commit()
+        } catch (e: Exception) {
+            connection.rollback()
+            throw e
+        } finally {
+            connection.autoCommit = true
+        }
+    }
+
+    override fun fetchVersion(): Int {
+        return connection.createStatement().use { stmt ->
+            stmt.executeQuery("PRAGMA user_version").use {
+                if (it.next()) it.getInt(1) else 0
+            }
+        }
+    }
+
+    override fun setVersion(version: Int) {
+        connection.createStatement().use { stmt -> stmt.execute("PRAGMA user_version = $version") }
     }
 }

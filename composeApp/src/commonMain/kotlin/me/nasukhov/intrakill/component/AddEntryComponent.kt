@@ -84,6 +84,7 @@ class DefaultAddEntryComponent(
                     mimeType = it.mimeType,
                     content = it.content,
                     preview = it.rawPreview,
+                    size = it.size,
                 )
             }
             val violations = picked.filter { it.isFailure }.map { it.exceptionOrNull()!!.message ?: "Unknown error" }

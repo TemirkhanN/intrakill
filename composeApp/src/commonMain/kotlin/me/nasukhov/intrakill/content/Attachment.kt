@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.content
 
+import me.nasukhov.intrakill.storage.FileSize
 import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.storage.mediaKind
 import java.io.InputStream
@@ -16,12 +17,26 @@ class Content {
     fun read(): InputStream = resolver()
 
     fun readBytes(): ByteArray = resolver().use { it.readBytes() }
+
+    fun calculateSize(): Long =
+        resolver().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var total = 0L
+            var read: Int
+
+            while (input.read(buffer).also { read = it } != -1) {
+                total += read
+            }
+
+            total
+        }
 }
 
 data class Attachment(
     val mimeType: String,
     val content: Content,
     val preview: ByteArray,
+    val size: FileSize,
     val id: String = UUID.randomUUID().toString(),
     val hashsum: ByteArray = hasher.computeHash(content),
     val isPersisted: Boolean = false,

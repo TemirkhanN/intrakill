@@ -16,33 +16,34 @@ import kotlin.use
 private class DBHelper(
     val ctx: Context,
     private val migrate: (db: SQLiteDatabase) -> Unit,
-    dbName: String,
-    dbVersion: Int,
-) : SQLiteOpenHelper(ctx, dbName, null, dbVersion) {
+    dbName: String
+) : SQLiteOpenHelper(ctx, dbName, null, 1) {
 
-    override fun onCreate(db: SQLiteDatabase) {
-        migrate(db)
-    }
+    override fun onCreate(db: SQLiteDatabase) = Unit
 
     override fun onUpgrade(
         db: SQLiteDatabase,
         oldVersion: Int,
         newVersion: Int
     ) = Unit
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+
+        migrate(db)
+    }
 }
 
 actual object SecureDatabase {
 
     private const val DB_NAME = "secured.db"
-    private const val DB_VERSION = 1
-    private const val ID_LENGTH = 36
 
     private var helper: DBHelper? = null
     private var db: SQLiteDatabase? = null
 
     /** Initialize with a context before opening the database */
     fun init(context: Context) {
-        helper = DBHelper(context, this::migrate, DB_NAME, DB_VERSION)
+        helper = DBHelper(context, this::migrate, DB_NAME)
     }
 
     fun dumpDatabase(output: OutputStream) {
@@ -114,7 +115,7 @@ actual object SecureDatabase {
         val ctx = helper ?: error("SecureDatabase not initialized. Call SecureDatabase.init(context) first.")
 
         return try {
-            SQLiteDatabase.loadLibs(ctx.ctx) // or pass context via DBHelper
+            SQLiteDatabase.loadLibs(ctx.ctx)
             db = ctx.getWritableDatabase(password)
             true
         } catch (e: Exception) {
@@ -348,7 +349,7 @@ actual object SecureDatabase {
         val result = mutableListOf<Attachment>()
 
         db.rawQuery(
-            "SELECT id, mime_type, preview, hashsum FROM attachment WHERE entry_id = ?",
+            "SELECT id, mime_type, preview, `size`, hashsum FROM attachment WHERE entry_id = ?",
             arrayOf(entryId)
         ).use { c ->
             while (c.moveToNext()) {
@@ -358,6 +359,7 @@ actual object SecureDatabase {
                     mimeType = c.getString(c.getColumnIndexOrThrow("mime_type")),
                     content = getContent(attachmentId),
                     preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
+                    size = c.getLong(c.getColumnIndexOrThrow("size")),
                     hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum")),
                     isPersisted = true,
                 )
@@ -408,42 +410,7 @@ actual object SecureDatabase {
     }
 
     private fun migrate(db: SQLiteDatabase) {
-        db.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS entry (
-                id TEXT PRIMARY KEY CHECK(length(id) = $ID_LENGTH),
-                name TEXT NOT NULL,
-                preview BLOB NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            """
-        )
-
-        db.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS attachment (
-                id TEXT PRIMARY KEY CHECK(length(id) = $ID_LENGTH),
-                entry_id TEXT NOT NULL,
-                content BLOB NOT NULL,
-                preview BLOB NOT NULL,
-                mime_type TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                hashsum BLOB NOT NULL,
-                FOREIGN KEY(entry_id) REFERENCES entry(id) ON DELETE CASCADE
-            );
-            """
-        )
-
-        db.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS tags (
-                entry_id TEXT NOT NULL,
-                tag TEXT NOT NULL,
-                PRIMARY KEY(entry_id, tag),
-                FOREIGN KEY(entry_id) REFERENCES entry(id) ON DELETE CASCADE
-            );
-            """
-        )
+        Migrator().migrate(SQLAdapterAndroid(db))
     }
 
     private fun getContent(attachmentId: String) = Content { BufferedInputStream(SQLiteBlobInputStream(db!!, attachmentId), 8 * 1024 * 1024) }
@@ -566,5 +533,34 @@ private class SQLiteBlobInputStream(
         bufferPos = 0
         position += chunk.size
         return true
+    }
+}
+
+private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {
+
+    override fun exec(sql: String) {
+        db.execSQL(sql)
+    }
+
+    override fun transactional(block: SQLAdapter.() -> Unit) {
+        db.beginTransaction()
+        try {
+            block()
+            db.setTransactionSuccessful()
+        } catch (e: Exception) {
+            throw e
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override fun fetchVersion(): Int {
+        return db.rawQuery("PRAGMA user_version", null).use { cursor ->
+            if (cursor.moveToFirst()) cursor.getInt(0) else 0
+        }
+    }
+
+    override fun setVersion(version: Int) {
+        db.execSQL("PRAGMA user_version = $version")
     }
 }

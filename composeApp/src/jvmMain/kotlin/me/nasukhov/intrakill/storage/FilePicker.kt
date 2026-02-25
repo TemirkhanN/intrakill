@@ -21,7 +21,8 @@ actual object FilePicker {
                     Result.success(PickedMedia(
                         name = file.name,
                         content = Content { file.inputStream() },
-                        mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+                        mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream",
+                        size = file.length(),
                     ))
                 } catch (e: Exception) {
                     Result.failure(e)

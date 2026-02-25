@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.scene.asImageBitmap
 
+typealias FileSize = Long
+
 expect object FilePicker {
     suspend fun pickMultiple(): List<Result<PickedMedia>>
 }
@@ -32,7 +34,8 @@ data class PickedMedia(
     val name: String,
     val content: Content,
     val mimeType: String,
-    val previewSize: Int = 512
+    val previewSize: Int = 512,
+    val size: FileSize,
 ) {
     val rawPreview by lazy {
         generatePreviewBytes(content, mimeType, previewSize)

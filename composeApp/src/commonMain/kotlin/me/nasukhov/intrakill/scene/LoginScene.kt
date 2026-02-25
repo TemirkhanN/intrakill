@@ -66,14 +66,16 @@ fun LoginScene(component: LoginComponent) {
             Button(
                 onClick = component::onImportClicked,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !state.isLoggingIn
             ) {
                 Text("Import Storage")
             }
             Button(
                 onClick = component::onExportClicked,
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                enabled = !state.isLoggingIn
             ) {
                 Text("Export Storage")
             }
