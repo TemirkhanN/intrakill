@@ -60,7 +60,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                     ) {
                         Image(
                             bitmap = entry.preview.asImageBitmap(),
-                            contentDescription = null
+                            contentDescription = entry.name
                         )
                     }
                 }
