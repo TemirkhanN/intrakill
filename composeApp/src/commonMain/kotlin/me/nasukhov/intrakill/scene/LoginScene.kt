@@ -39,7 +39,8 @@ fun LoginScene(component: LoginComponent) {
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                isError = !state.violations.isEmpty()
+                isError = !state.violations.isEmpty(),
+                enabled = !state.isLoggingIn
             )
 
             if (!state.violations.isEmpty()) {
