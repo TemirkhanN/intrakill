@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlin.math.max
 
 @Composable
 fun TagList(
@@ -18,7 +19,14 @@ fun TagList(
     var selectedTags by remember { mutableStateOf(selectedTags) }
     var expanded by remember { mutableStateOf(expandedInitially) }
 
-    val visibleTags = if (expanded) tags else tags.take(initiallyVisible)
+    // Show selected tags first, then all others.
+    val visibleTags = if (expanded) {
+        selectedTags + tags
+    } else {
+        // If not expanded, show all selected tags and some more if initiallyVisible count isn't reached.
+        (selectedTags + tags).take(max(selectedTags.size, initiallyVisible))
+    }
+
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         Column(modifier = Modifier.fillMaxWidth()) {
 
