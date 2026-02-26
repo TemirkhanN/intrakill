@@ -132,8 +132,8 @@ actual object SecureDatabase {
             }
         }
 
-        val remainingAttachmentIds = entry.attachments.joinToString(",") { "?" }
-        db.prepareStatement("DELETE FROM attachment WHERE entry_id=? AND id NOT IN ($remainingAttachmentIds)").use { stmt ->
+        val remainingAttachmentIdsPlaceholders = entry.attachments.joinToString(",") { "?" }
+        db.prepareStatement("DELETE FROM attachment WHERE entry_id=? AND id NOT IN ($remainingAttachmentIdsPlaceholders)").use { stmt ->
             var placeholderPosition = 1
             stmt.setString(placeholderPosition++, entry.id)
             entry.attachments.forEach { remainingAttachment ->

@@ -191,41 +191,34 @@ actual object SecureDatabase {
         check(entry.isPersisted) { "Attempt to update non-existent entry" }
         val oldEntry = getById(entry.id)
 
-
         val removedTags = oldEntry.tags.minus(entry.tags)
         if (!removedTags.isEmpty()) {
-            val removedTagsPlaceholder = removedTags.joinToString(",") { "?" }
-            db.execSQL("DELETE FROM tags WHERE entry_id=? ANd tag IN ($removedTagsPlaceholder)")
+            val placeholders = removedTags.joinToString(",") { "?" }
+            val args = arrayOf(entry.id, *removedTags.toTypedArray())
+            db.execSQL("DELETE FROM tags WHERE entry_id = ? AND tag IN ($placeholders)", args)
         }
 
         val addedTags = entry.tags.minus(oldEntry.tags)
-        if (!addedTags.isEmpty()) {
-            addedTags.forEach { tag ->
-                db.execSQL(
-                    "INSERT INTO tags(entry_id, tag) VALUES (?,?)",
-                    arrayOf(entry.id, tag)
-                )
-            }
+        addedTags.forEach { tag ->
+            db.execSQL("INSERT INTO tags (entry_id, tag) VALUES (?, ?)", arrayOf(entry.id, tag))
         }
 
-        val remainingAttachmentIds = entry.attachments.joinToString(",") { "?" }
-        db.execSQL("DELETE FROM attachment WHERE entry_id=? AND id NOT IN ($remainingAttachmentIds)")
+        val remainingIds = entry.attachments.map { it.id }
+        val deletedIds = oldEntry.attachments.map { it.id }.filter { it !in remainingIds }
+
+        if (!deletedIds.isEmpty()) {
+            val placeholders = deletedIds.joinToString(",") { "?" }
+            db.execSQL("DELETE FROM attachment WHERE id IN ($placeholders)", deletedIds.toTypedArray())
+        }
 
         entry.attachments.filter { !it.isPersisted }.forEach { a ->
-            db.execSQL(
-                """
-                    INSERT INTO attachment
-                    (id, entry_id, preview, mime_type, hashsum)
-                    VALUES (?,?,?,?,?)
-                    """.trimIndent(),
-                arrayOf(
-                    a.id,
-                    entry.id,
-                    a.preview,
-                    a.mimeType,
-                    a.hashsum
-                )
-            )
+            // Using insertOrThrow or explicit params for BLOB safety
+            db.execSQL("""
+            INSERT INTO attachment (id, entry_id, preview, mime_type, hashsum, size)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """.trimIndent(), arrayOf(a.id, entry.id, a.preview, a.mimeType, a.hashsum, a.size))
+
+            // Write chunks (using the 1MB split logic)
             writeContent(a.id, a.content)
         }
     }
