@@ -11,6 +11,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import java.util.Enumeration
 
 expect fun ByteArray.asImageBitmap(): ImageBitmap
 
@@ -37,4 +38,10 @@ fun <T : Any> Value<T>.asFlow(): Flow<T> = callbackFlow {
     awaitClose {
         cancellation.cancel()
     }
+}
+
+fun <T> Sequence<T>.asEnumeration(): Enumeration<T> = object : Enumeration<T> {
+    val iterator = this@asEnumeration.iterator()
+    override fun hasMoreElements(): Boolean = iterator.hasNext()
+    override fun nextElement(): T = iterator.next()
 }

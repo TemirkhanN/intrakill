@@ -112,9 +112,8 @@ actual fun generatePreviewBytes(
 private fun generateImagePreviewAndroid(
     content: Content,
     maxSize: Int
-): ByteArray {
-    val src = BitmapFactory.decodeStream(content.read())
-        ?: error("Bitmap decode failed")
+): ByteArray = content.read().use {
+    val src = BitmapFactory.decodeStream(it)
 
     val scale = min(
         maxSize.toFloat() / src.width,
@@ -135,8 +134,8 @@ private fun generateImagePreviewAndroid(
         paint
     )
 
-    return ByteArrayOutputStream().also {
-        resized.compress(Bitmap.CompressFormat.JPEG, 85, it)
+    return ByteArrayOutputStream().also { output ->
+        resized.compress(Bitmap.CompressFormat.JPEG, 85, output)
     }.toByteArray()
 }
 

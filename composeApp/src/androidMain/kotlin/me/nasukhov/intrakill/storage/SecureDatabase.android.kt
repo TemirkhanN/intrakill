@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.storage
 
+import android.content.ContentValues
 import android.content.Context
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SQLiteOpenHelper
@@ -7,10 +8,11 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
-import java.io.BufferedInputStream
+import me.nasukhov.intrakill.scene.asEnumeration
 import java.io.File
-import java.io.InputStream
+import java.io.FilterInputStream
 import java.io.OutputStream
+import java.io.SequenceInputStream
 import kotlin.use
 
 private class DBHelper(
@@ -21,8 +23,16 @@ private class DBHelper(
 
     override fun onCreate(db: SQLiteDatabase) = Unit
 
+    // Downgrade and upgrade are entirely on migrator. We don't rely on the helper here.
     override fun onUpgrade(
         db: SQLiteDatabase,
+        oldVersion: Int,
+        newVersion: Int
+    ) = Unit
+
+    // Downgrade and upgrade are entirely on migrator. We don't rely on helper here.
+    override fun onDowngrade(
+        db: SQLiteDatabase?,
         oldVersion: Int,
         newVersion: Int
     ) = Unit
@@ -154,13 +164,12 @@ actual object SecureDatabase {
             db.execSQL(
                 """
                     INSERT INTO attachment
-                    (id, entry_id, content, preview, mime_type, hashsum)
-                    VALUES (?,?,?,?,?,?)
+                    (id, entry_id, preview, mime_type, hashsum)
+                    VALUES (?,?,?,?,?)
                     """.trimIndent(),
                 arrayOf(
                     a.id,
                     entry.id,
-                    a.content.readBytes(),
                     a.preview,
                     a.mimeType,
                     a.hashsum
@@ -206,13 +215,12 @@ actual object SecureDatabase {
             db.execSQL(
                 """
                     INSERT INTO attachment
-                    (id, entry_id, content, preview, mime_type, hashsum)
-                    VALUES (?,?,?,?,?,?)
+                    (id, entry_id, preview, mime_type, hashsum)
+                    VALUES (?,?,?,?,?)
                     """.trimIndent(),
                 arrayOf(
                     a.id,
                     entry.id,
-                    a.content.readBytes(),
                     a.preview,
                     a.mimeType,
                     a.hashsum
@@ -413,126 +421,79 @@ actual object SecureDatabase {
         Migrator().migrate(SQLAdapterAndroid(db))
     }
 
-    private fun getContent(attachmentId: String) = Content { BufferedInputStream(SQLiteBlobInputStream(db!!, attachmentId), 8 * 1024 * 1024) }
-
-    private fun writeContent(attachmentId: String, content: Content) {
-        /*
+    private fun getContent(attachmentId: String): Content = Content {
         val db = db ?: error("DB not opened")
 
-        val buffer = ByteArray(8 * 1024 * 1024)
+        val cursor = db.rawQuery(
+            "SELECT data FROM attachment_chunk WHERE attachment_id = ? ORDER BY sequence_number ASC",
+            arrayOf(attachmentId)
+        )
 
-        content.read().use { input ->
-            while (true) {
-                val read = input.read(buffer)
-                if (read <= 0) break
+        val streamSequence = sequence {
+            try {
+                if (cursor.count == 0) {
+                    throw IllegalStateException("Attachment $attachmentId is missing content entirely")
+                }
 
-                val chunk = if (read == buffer.size) buffer else buffer.copyOf(read)
-                db.execSQL(
-                    """
-                UPDATE attachment
-                SET content = content || ?
-                WHERE id = ?
-                """.trimIndent(),
-                    arrayOf(chunk, attachmentId)
-                )
+                while (cursor.moveToNext()) {
+                    val blob = cursor.getBlob(0)
+                    yield(blob.inputStream())
+                }
+            } catch (e: Exception) {
+                cursor.close()
+                throw e
             }
         }
-         */
-    }
-}
 
-private class SQLiteBlobInputStream(
-    private val db: SQLiteDatabase,
-    private val attachmentId: String
-) : InputStream() {
-    companion object {
-        private const val MB = 1024 * 1024
-        private const val BIG_BLOG_SIZE = 10 * MB
-    }
+        val mergedStream = SequenceInputStream(streamSequence.asEnumeration())
 
-    private val totalSize: Long by lazy {
-        db.rawQuery(
-            "SELECT length(content) FROM attachment WHERE id=?",
-            arrayOf(attachmentId)
-        ).use { c ->
-            if (!c.moveToFirst()) 0L else c.getLong(0)
+        object : FilterInputStream(mergedStream) {
+            private var isClosed = false
+
+            override fun close() {
+                if (isClosed) return
+                try {
+                    super.close()
+                } finally {
+                    cursor.close()
+                    isClosed = true
+                }
+            }
         }
     }
 
-    private val chunkSize: Int by lazy {
-        if (totalSize >= BIG_BLOG_SIZE) 8 * MB else 1 * MB
-    }
+    private fun writeContent(attachmentId: String, content: Content) {
+        val db = db ?: error("DB not opened")
 
-    private var position = 1L // SQLite substr is 1-based
-    private var buffer = ByteArray(0)
-    private var bufferPos = 0
-    private var eof = false
-    private var closed = false
+        val buffer = ByteArray(MAX_CHUNK_SIZE)
 
-    override fun read(): Int {
-        if (closed) throw IllegalStateException("Stream closed")
-        if (!ensureData()) return -1
-        return buffer[bufferPos++].toInt() and 0xFF
-    }
+        content.use { input ->
+            var sequenceNumber = 0
+            var totalBytesWritten = 0L
 
-    override fun read(b: ByteArray, off: Int, len: Int): Int {
-        if (closed) throw IllegalStateException("Stream closed")
+            while (true) {
+                val bytesRead = input.read(buffer)
+                if (bytesRead == -1) break
 
-        if (off < 0 || len < 0 || off + len > b.size)
-            throw IndexOutOfBoundsException()
+                val dataToInsert = if (bytesRead == MAX_CHUNK_SIZE) {
+                    buffer
+                } else {
+                    buffer.copyOf(bytesRead)
+                }
 
-        if (len == 0) return 0
+                val values = ContentValues().apply {
+                    put("attachment_id", attachmentId)
+                    put("sequence_number", sequenceNumber)
+                    put("data", dataToInsert)
+                }
 
-        if (!ensureData()) return -1
+                val rowId = db.insertOrThrow("attachment_chunk", null, values)
+                if (rowId == -1L) throw IllegalStateException("Failed to insert chunk $sequenceNumber")
 
-        val available = buffer.size - bufferPos
-        if (available <= 0) return -1   // critical safety
-
-        val toCopy = minOf(len, available)
-        System.arraycopy(buffer, bufferPos, b, off, toCopy)
-        bufferPos += toCopy
-        return toCopy
-    }
-
-    override fun close() {
-        closed = true
-        buffer = ByteArray(0)
-    }
-
-    private fun ensureData(): Boolean {
-        if (bufferPos < buffer.size) return true
-        if (eof) return false
-        if (closed) return false
-
-        val remaining = totalSize - (position - 1)
-        if (remaining <= 0) {
-            eof = true
-            return false
+                sequenceNumber++
+                totalBytesWritten += bytesRead
+            }
         }
-
-        val requestSize = minOf(chunkSize.toLong(), remaining).toInt()
-
-        val chunk: ByteArray? = db.rawQuery(
-            """
-            SELECT substr(content, ?, ?)
-            FROM attachment
-            WHERE id=?
-            """.trimIndent(),
-            arrayOf(position.toString(), requestSize.toString(), attachmentId)
-        ).use { c ->
-            if (!c.moveToFirst()) null else c.getBlob(0)
-        }
-
-        // treat null OR empty as EOF (important)
-        if (chunk == null || chunk.isEmpty()) {
-            eof = true
-            return false
-        }
-
-        buffer = chunk
-        bufferPos = 0
-        position += chunk.size
-        return true
     }
 }
 
@@ -554,13 +515,14 @@ private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {
         }
     }
 
-    override fun fetchVersion(): Int {
-        return db.rawQuery("PRAGMA user_version", null).use { cursor ->
-            if (cursor.moveToFirst()) cursor.getInt(0) else 0
+    override fun fetchVersion(): Version? {
+        return db.rawQuery("SELECT version FROM application_metadata LIMIT 1", null).use { cursor ->
+            val versionColumn = cursor.getColumnIndexOrThrow("version")
+            if (cursor.moveToFirst()) {
+                Version.fromString(cursor.getString(versionColumn))
+            } else {
+                null
+            }
         }
-    }
-
-    override fun setVersion(version: Int) {
-        db.execSQL("PRAGMA user_version = $version")
     }
 }

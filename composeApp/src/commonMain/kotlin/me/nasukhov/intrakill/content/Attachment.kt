@@ -14,7 +14,10 @@ class Content {
         this.resolver = resolver
     }
 
+    @Deprecated("Tricky to follow. Try sticking with use() to avoid non-closed resources")
     fun read(): InputStream = resolver()
+
+    fun use(handler: (InputStream) -> Unit) = resolver().use(handler)
 
     fun readBytes(): ByteArray = resolver().use { it.readBytes() }
 
@@ -50,7 +53,7 @@ data class Attachment(
 
 private fun MessageDigest.computeHash(source: Content): ByteArray {
     val chunkSizeKB = 64 * 1024
-    source.read().use { input ->
+    source.use { input ->
         val buffer = ByteArray(chunkSizeKB)
         while (true) {
             val read = input.read(buffer)

@@ -56,7 +56,9 @@ private fun RealPlayer(attachment: Attachment) {
         withContext(Dispatchers.IO) {
             try {
                 val file = File.createTempFile("intrakill_vid_", ".mp4").apply {
-                    outputStream().use { output -> attachment.content.read().copyTo(output)}
+                    outputStream().use {
+                        output -> attachment.content.use { it.copyTo(output) }
+                    }
                     deleteOnExit()
                 }
                 tempFile = file

@@ -15,7 +15,7 @@ actual fun generatePreviewBytes(
 ): ByteArray =
     when (mimeType.mediaKind()) {
         MediaKind.IMAGE, MediaKind.GIF ->
-            generateImagePreviewSkia(content.read().readBytes(), previewSize)
+            generateImagePreviewSkia(content.readBytes(), previewSize)
 
         MediaKind.VIDEO ->
             generateVideoPlaceholder(previewSize)

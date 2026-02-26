@@ -18,4 +18,5 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 composeApp/secured.db
+composeApp/secured.db-journal
 tmp/*

@@ -4,9 +4,11 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
-import java.io.BufferedInputStream
+import me.nasukhov.intrakill.scene.asEnumeration
 import java.io.File
+import java.io.FilterInputStream
 import java.io.OutputStream
+import java.io.SequenceInputStream
 import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.use
@@ -68,9 +70,9 @@ actual object SecureDatabase {
                     stmt.execute("PRAGMA foreign_keys = ON;")
                     // Force key validation
                     stmt.execute("SELECT count(*) FROM sqlite_master;")
-
-                    Migrator().migrate(SQLAdapterJVM(this))
                 }
+
+                Migrator().migrate(SQLAdapterJVM(this))
             }
 
             true
@@ -140,20 +142,25 @@ actual object SecureDatabase {
             stmt.executeUpdate()
         }
 
+        val newAttachments = entry.attachments.filter { !it.isPersisted }
         db.prepareStatement(
-            "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?,?)"
+            "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?)"
         ).use { stmt ->
-            for (a in entry.attachments.filter { !it.isPersisted }) {
+            for (a in newAttachments) {
                 stmt.setString(1, a.id)
                 stmt.setString(2, entry.id)
-                stmt.setBinaryStream(3, a.content.read())
-                stmt.setBytes(4, a.preview)
-                stmt.setString(5, a.mimeType)
-                stmt.setBytes(6, a.hashsum)
-                stmt.setLong(7, a.size)
+                stmt.setBytes(3, a.preview)
+                stmt.setString(4, a.mimeType)
+                stmt.setBytes(5, a.hashsum)
+                stmt.setLong(6, a.size)
                 stmt.addBatch()
             }
             stmt.executeBatch()
+        }
+
+        // TODO probably worth it to store data row by row instead of separating into batches
+        for (a in newAttachments) {
+            writeContent(a.id, a.content)
         }
     }
 
@@ -168,20 +175,24 @@ actual object SecureDatabase {
 
             // Now insert attachments
             val attachStmt = db.prepareStatement(
-                "INSERT INTO attachment(id, entry_id, content, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?,?)"
+                "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?)"
             )
             attachStmt.use { aStmt ->
+                // Save attachment's details
                 for (a in entry.attachments) {
                     aStmt.setString(1, a.id)
                     aStmt.setString(2, entry.id)
-                    aStmt.setBinaryStream(3, a.content.read())
-                    aStmt.setBytes(4, a.preview)
-                    aStmt.setString(5, a.mimeType)
-                    aStmt.setBytes(6, a.hashsum)
-                    aStmt.setLong(7, a.size)
+                    aStmt.setBytes(3, a.preview)
+                    aStmt.setString(4, a.mimeType)
+                    aStmt.setBytes(5, a.hashsum)
+                    aStmt.setLong(6, a.size)
                     aStmt.addBatch()
                 }
                 aStmt.executeBatch()
+            }
+            // Save attachment's content
+            for (a in entry.attachments) {
+                writeContent(a.id, a.content)
             }
 
             // Insert tags
@@ -417,16 +428,56 @@ actual object SecureDatabase {
     }
 
     private fun getContent(attachmentId: String): Content = Content {
-        db.prepareStatement("SELECT content FROM attachment WHERE id = ?")
-            .use { stmt ->
-                stmt.setString(1, attachmentId)
+        val sql = "SELECT data FROM attachment_chunk WHERE attachment_id = ? ORDER BY sequence_number ASC"
+        val stmt = db.prepareStatement(sql)
+        stmt.setString(1, attachmentId)
+        val rs = stmt.executeQuery()
 
-                val rs = stmt.executeQuery()
-                if (!rs.next()) {
-                    throw IllegalStateException("Couldn't find attachment with id=$attachmentId")
+        val streamSequence = sequence {
+            var hasData = false
+            while (rs.next()) {
+                hasData = true
+                yield(rs.getBinaryStream(1))
+            }
+            if (!hasData) throw IllegalStateException("Attachment $attachmentId is missing content entirely")
+        }
+
+        // Wrap sequence stream in filterInput so that result set is closed when the stream gets closed
+        object : FilterInputStream(SequenceInputStream(streamSequence.asEnumeration())) {
+            override fun close() {
+                try { super.close() } finally {
+                    rs.close()
+                    stmt.close()
                 }
+            }
+        }
+    }
 
-                BufferedInputStream(rs.getBinaryStream(1), 4 * 1024 * 1024)
+    private fun writeContent(attachmentId: String, content: Content) {
+        val buffer = ByteArray(MAX_CHUNK_SIZE)
+
+        // TODO can be done in parallel
+        db.prepareStatement("DELETE FROM attachment_chunk WHERE attachment_id = ?").use { stmt ->
+            stmt.setString(1, attachmentId)
+            stmt.executeUpdate()
+        }
+        db.prepareStatement("INSERT INTO attachment_chunk (attachment_id, sequence_number, data) VALUES (?, ?, ?)")
+            .use { stmt ->
+                content.use { input ->
+                    var sequence = 0
+
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read <= 0) break
+
+                        val chunk = if (read == MAX_CHUNK_SIZE) buffer else buffer.copyOf(read)
+
+                        stmt.setString(1, attachmentId)
+                        stmt.setInt(2, sequence++)
+                        stmt.setBytes(3, chunk)
+                        stmt.executeUpdate()
+                    }
+                }
             }
     }
 }
@@ -521,15 +572,9 @@ private class SQLAdapterJVM(private val connection: Connection): SQLAdapter {
         }
     }
 
-    override fun fetchVersion(): Int {
-        return connection.createStatement().use { stmt ->
-            stmt.executeQuery("PRAGMA user_version").use {
-                if (it.next()) it.getInt(1) else 0
-            }
+    override fun fetchVersion(): Version? = connection.createStatement().use { stmt ->
+        stmt.executeQuery("SELECT version FROM application_metadata LIMIT 1").use {
+            if (it.next()) Version.fromString(it.getString(1)) else null
         }
-    }
-
-    override fun setVersion(version: Int) {
-        connection.createStatement().use { stmt -> stmt.execute("PRAGMA user_version = $version") }
     }
 }
