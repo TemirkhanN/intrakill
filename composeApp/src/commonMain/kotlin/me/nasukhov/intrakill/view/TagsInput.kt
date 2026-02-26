@@ -20,8 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -41,7 +39,6 @@ fun TagsInput(
     var finalizedTags by remember { mutableStateOf(selectedTags) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
 
-    val focusRequester = remember { FocusRequester() }
     val interactionSource = remember { MutableInteractionSource() }
 
     val currentText = textFieldValue.text
@@ -77,8 +74,6 @@ fun TagsInput(
 
                                 // TODO make configurable? Currently, it seems to be better if suggestions stay
                                 //textFieldValue = TextFieldValue("", TextRange(0))
-
-                                focusRequester.requestFocus()
                             },
                         )
                     }
@@ -118,7 +113,6 @@ fun TagsInput(
             interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
-                .focusRequester(focusRequester)
         )
 
         // Display finalized tags as "chips" or a simple list so user sees what's locked in
