@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.ListEntriesComponent
 import me.nasukhov.intrakill.view.Paginator
+import me.nasukhov.intrakill.view.TagsInput
 
 @Composable
 fun ListEntriesScene(component: ListEntriesComponent) {
@@ -39,11 +40,11 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Button(onClick = component::onAddClicked) { Text("+ Add New") }
 
-                    // TODO expanded resets
-                    TagList(
-                        tags = knownTags.map { it.name }.toSet(),
+                    TagsInput(
+                        knownTags = knownTags,
+                        onTagsChanged = component::onTagsChanged,
                         selectedTags = state.filteredByTags,
-                        onTagsChanged = component::onTagsChanged
+                        maxSuggestions = 8,
                     )
                 }
             }

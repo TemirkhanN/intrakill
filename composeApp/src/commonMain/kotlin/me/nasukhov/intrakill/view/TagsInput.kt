@@ -1,7 +1,6 @@
 package me.nasukhov.intrakill.view
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -39,8 +38,6 @@ fun TagsInput(
 ) {
     var finalizedTags by remember { mutableStateOf(selectedTags) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
-
-    val interactionSource = remember { MutableInteractionSource() }
 
     val currentText = textFieldValue.text
     val currentPrefix = currentText.substringAfterLast(tagsDelimiter).trim().lowercase()
@@ -101,21 +98,13 @@ fun TagsInput(
                     if (word.isNotEmpty() && word.length <= maxTagLength) {
                         finalizedTags = finalizedTags + word
                         onTagsChanged(finalizedTags)
-                        // Reset text field but keep the "session"
                         textFieldValue = TextFieldValue("", selection = TextRange(0))
                     }
                 } else {
                     // Otherwise, just update the typing state
                     textFieldValue = newValue
-
-                    // Sync parent with finalized + current part (optional, depending on UX)
-                    val currentParts = newText.split(tagsDelimiter)
-                        .map { it.trim().lowercase() }
-                        .filter { it.isNotEmpty() }
-                    onTagsChanged(finalizedTags + currentParts)
                 }
             },
-            interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
         )
