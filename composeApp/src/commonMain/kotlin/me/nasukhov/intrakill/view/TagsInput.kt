@@ -34,7 +34,8 @@ fun TagsInput(
     onTagsChanged: (Set<String>) -> Unit,
     isEnabled: Boolean = true,
     maxSuggestions: Int = 6,
-    tagsDelimiter: String = ","
+    tagsDelimiter: String = ",",
+    maxTagLength: Int = Tag.MAX_LENGTH,
 ) {
     var finalizedTags by remember { mutableStateOf(selectedTags) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue("")) }
@@ -89,11 +90,15 @@ fun TagsInput(
             enabled = isEnabled,
             onValueChange = { newValue ->
                 val newText = newValue.text
+                // If value is bigger than allowed length including delimiter, no point in going further
+                if (newText.length > (maxTagLength + tagsDelimiter.length)) {
+                    return@OutlinedTextField
+                }
 
                 // If the user typed a delimiter, finalize the current word
                 if (newText.endsWith(tagsDelimiter)) {
                     val word = newText.substringBeforeLast(tagsDelimiter).trim().lowercase()
-                    if (word.isNotEmpty()) {
+                    if (word.isNotEmpty() && word.length <= maxTagLength) {
                         finalizedTags = finalizedTags + word
                         onTagsChanged(finalizedTags)
                         // Reset text field but keep the "session"
