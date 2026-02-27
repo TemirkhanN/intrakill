@@ -37,7 +37,7 @@ fun VideoPlayer(attachment: Attachment) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .aspectRatio(1f),
+            .aspectRatio(16f/9),
         contentAlignment = Alignment.Center
     ) {
 
@@ -52,7 +52,7 @@ fun VideoPlayer(attachment: Attachment) {
                     contentDescription = "Video Preview",
                     modifier = Modifier
                         .clickable { isLoaded = true }
-                        .border(1.dp, Color.Blue)
+                        .border(1.dp, Color.Cyan)
                         .fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
