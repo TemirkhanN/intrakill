@@ -1,11 +1,12 @@
 package me.nasukhov.intrakill.view
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,7 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import me.nasukhov.intrakill.content.Attachment
 import chaintech.videoplayer.host.MediaPlayerHost
 import chaintech.videoplayer.model.ScreenResize
@@ -31,17 +34,29 @@ import java.io.File
 fun VideoPlayer(attachment: Attachment) {
     var isLoaded by remember { mutableStateOf(false) }
 
-    if (isLoaded) {
-        RealPlayer(attachment)
-    } else {
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Image(
-                bitmap = attachment.preview.asImageBitmap(),
-                contentDescription = "Video Preview",
-                modifier = Modifier
-                    .clickable { isLoaded = true },
-                contentScale = ContentScale.None,
-            )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .aspectRatio(1f),
+        contentAlignment = Alignment.Center
+    ) {
+
+        Crossfade(
+            targetState = isLoaded
+        ) { isReady ->
+            if (isReady) {
+                RealPlayer(attachment)
+            } else {
+                Image(
+                    bitmap = attachment.preview.asImageBitmap(),
+                    contentDescription = "Video Preview",
+                    modifier = Modifier
+                        .clickable { isLoaded = true }
+                        .border(1.dp, Color.Blue)
+                        .fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
         }
     }
 }
@@ -69,50 +84,42 @@ private fun RealPlayer(attachment: Attachment) {
             }
         }
     }
+    when {
+        isWritingFile -> {
+            CircularProgressIndicator()
+        }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .aspectRatio(1f),
-        contentAlignment = Alignment.Center
-    ) {
-        when {
-            isWritingFile -> {
-                CircularProgressIndicator()
-            }
+        error.isNotEmpty() || tempFile == null -> {
+            PageError(error)
+        }
 
-            error.isNotEmpty() || tempFile == null -> {
-                PageError(error)
-            }
-
-            else -> {
-                val file = tempFile!!
-                val playerHost = remember(file.absolutePath) {
-                    MediaPlayerHost(
-                        mediaUrl = file.absolutePath,
-                        isMuted = false,
-                        autoPlay = true,
-                        isLooping = false,
-                        initialVideoFitMode = ScreenResize.FIT
-                    )
-                }
-                VideoPlayerComposable(
-                    modifier = Modifier.fillMaxSize(),
-                    playerHost = playerHost,
-                    playerConfig = VideoPlayerConfig(
-                        isPauseResumeEnabled = true,
-                        isSeekBarVisible = true,
-                        isDurationVisible = true,
-                        isAutoHideControlEnabled = true,
-                        isGestureVolumeControlEnabled = false,
-                        controlHideIntervalSeconds = 5,
-                    )
+        else -> {
+            val file = tempFile!!
+            val playerHost = remember(file.absolutePath) {
+                MediaPlayerHost(
+                    mediaUrl = file.absolutePath,
+                    isMuted = false,
+                    autoPlay = true,
+                    isLooping = false,
+                    initialVideoFitMode = ScreenResize.FIT
                 )
-                DisposableEffect(playerHost) {
-                    onDispose {
-                        playerHost.pause()
-                        file.delete()
-                    }
+            }
+            VideoPlayerComposable(
+                modifier = Modifier.fillMaxSize(),
+                playerHost = playerHost,
+                playerConfig = VideoPlayerConfig(
+                    isPauseResumeEnabled = true,
+                    isSeekBarVisible = true,
+                    isDurationVisible = true,
+                    isAutoHideControlEnabled = true,
+                    isGestureVolumeControlEnabled = false,
+                    controlHideIntervalSeconds = 5,
+                )
+            )
+            DisposableEffect(playerHost) {
+                onDispose {
+                    playerHost.pause()
+                    file.delete()
                 }
             }
         }

@@ -54,7 +54,7 @@ fun AttachmentView(
                     modifier = Modifier.aspectRatio(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No preview", color = Color.Gray)
+                    Text("Attachment is not supported.", color = Color.Gray)
                 }
             }
         }

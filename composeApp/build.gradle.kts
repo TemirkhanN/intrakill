@@ -57,6 +57,7 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.desktop.database.sqlcipher)
             implementation(libs.ktor.server.desktop)
+            implementation("org.bytedeco:javacv-platform:1.5.13")
         }
     }
 }
