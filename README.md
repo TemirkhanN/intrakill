@@ -45,6 +45,16 @@ A: I don't have practical reasons to implement iOS version since I don't have a 
 Q: Is it possible to store files other than images?  
 A: It's a media storage and is 99% intended for images and video.
 
+Q: How do I reset password?
+A: You can't. Once you forget it, the storage is lost.`*`
+> Technically, you can bruteforce it, but that depends on how strong your password was.  
+> i.e. 6-8 char password containing only digits will take approx a minute to brute.  
+> 6-8 char password containing symbols+letters+digits might take years.  
+
+Q: Okay, I forgot the password. How do I delete db and create new?  
+A: Well, I guess, at that point I'd just reinstall the app, but I didn't put dedicated feature to create storage anew.
+To delete storage on desktop see [Where is the storage](#Desktop)
+
 ### Build and Run Android Application
 
 To build and run the development version of the Android app, use the run configuration from the run widget
