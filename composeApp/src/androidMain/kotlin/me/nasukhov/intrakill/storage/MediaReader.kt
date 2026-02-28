@@ -1,6 +1,7 @@
 package me.nasukhov.intrakill.storage
 
 import android.content.ContentResolver
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -13,23 +14,29 @@ import me.nasukhov.intrakill.content.Content
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
 
-internal fun ContentResolver.readPickedMedia(uri: Uri): Result<PickedMedia> = try {
-    val name = this.query(uri, null, null, null, null)
-        ?.use { c ->
-            val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (idx >= 0 && c.moveToFirst()) c.getString(idx) else "unknown"
-        } ?: "unknown"
+internal fun Context.readPickedMedia(uri: Uri): Result<PickedMedia> = try {
+    this.contentResolver.let { resolver ->
+        val name = resolver.query(uri, null, null, null, null)
+            ?.use { c ->
+                val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && c.moveToFirst()) c.getString(idx) else "unknown"
+            } ?: "unknown"
 
-    val mime = this.getType(uri) ?: "application/octet-stream"
-    val content = Content { this.openInputStream(uri) ?: throw Exception("Can't read selected file ${uri.getFileName()}") }
+        val mime = resolver.getType(uri) ?: "application/octet-stream"
+        val content = Content {
+            resolver.openInputStream(uri) ?: throw Exception("Can't read selected file ${uri.getFileName()}")
+        }
 
-    Result.success(PickedMedia(
-        name = name,
-        content = content,
-        mimeType = mime,
-        size = getFileSize(uri) ?: content.calculateSize(),
-        rawPreview = generatePreview(content, uri, mime)
-    ))
+        Result.success(
+            PickedMedia(
+                name = name,
+                content = content,
+                mimeType = mime,
+                size = resolver.getFileSize(uri) ?: content.calculateSize(),
+                rawPreview = generatePreview(content, uri, mime)
+            )
+        )
+    }
 } catch (e: Exception) {
     Result.failure(e)
 }
@@ -60,9 +67,9 @@ internal fun ContentResolver.getFileSize(uri: Uri): FileSize? {
 internal fun FileSize.MB(): String = "${this/(1024*1024)}MB"
 
 // TODO messy signatures
-private fun generatePreview(content: Content, uri: Uri, mimeType: String): ByteArray =  when (mimeType.mediaKind()) {
+private fun Context.generatePreview(content: Content, uri: Uri, mimeType: String): ByteArray =  when (mimeType.mediaKind()) {
     MediaKind.IMAGE, MediaKind.GIF -> generateImagePreviewAndroid(content)
-    MediaKind.VIDEO -> generateVideoPreview(uri.path!!)
+    MediaKind.VIDEO -> generateVideoPreview(uri)
 }
 
 private fun generateImagePreviewAndroid(
@@ -95,14 +102,14 @@ private fun generateImagePreviewAndroid(
     }.toByteArray()
 }
 
-private fun generateVideoPreview(path: String): ByteArray {
+private fun Context.generateVideoPreview(uri: Uri): ByteArray {
     val retriever = MediaMetadataRetriever()
     val maxSize = PickedMedia.PREVIEW_SIZE.toFloat()
 
     return try {
-        retriever.setDataSource(path)
-        // Grab frame at 1 second
-        val rawBitmap = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        retriever.setDataSource(this, uri)
+        // Grab frame at 3rd second
+        val rawBitmap = retriever.getFrameAtTime(3000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             ?: return generateVideoPlaceholderStub(maxSize.toInt())
 
         val scale = min(maxSize / rawBitmap.width, maxSize / rawBitmap.height).coerceAtMost(1f)

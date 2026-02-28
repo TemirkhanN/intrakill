@@ -56,12 +56,12 @@ actual fun ProvideFilePicker(
         // Launch coroutine in remembered scope
         scope.launch {
             val result = withContext(Dispatchers.IO) {
-                uris.mapNotNull { uri ->
-                    val fileSize = context.contentResolver.getFileSize(uri)
-                    if (fileSize != null && fileSize > maxAllowedFileSize) {
-                        Result.failure(Exception("Files is too big (${fileSize.MB()} out of ${maxAllowedFileSize.MB()}"))
-                    } else {
-                        context.contentResolver.readPickedMedia(uri)
+                uris.map { uri ->
+                    context.readPickedMedia(uri).mapCatching { media ->
+                        check(media.size <= maxAllowedFileSize) {
+                            "File is too big (${media.size.MB()} out of ${maxAllowedFileSize.MB()})"
+                        }
+                        media
                     }
                 }
             }
