@@ -1,18 +1,15 @@
 package me.nasukhov.intrakill.storage
 
-import android.content.ContentValues
 import android.content.Context
 import net.sqlcipher.database.SQLiteDatabase
 import net.sqlcipher.database.SQLiteOpenHelper
-import me.nasukhov.intrakill.content.Attachment
-import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
-import me.nasukhov.intrakill.scene.asEnumeration
+import me.nasukhov.intrakill.storage.dao.AttachmentRepository
+import me.nasukhov.intrakill.storage.dao.EntryRepository
+import me.nasukhov.intrakill.storage.dao.TagRepository
 import java.io.File
-import java.io.FilterInputStream
 import java.io.OutputStream
-import java.io.SequenceInputStream
 import kotlin.use
 
 private class DBHelper(
@@ -51,9 +48,16 @@ actual object SecureDatabase {
     private var helper: DBHelper? = null
     private var db: SQLiteDatabase? = null
 
+    private val conn
+        get() = db!!
+
+    private val tagRepository by lazy { TagRepository(::conn) }
+    private val attachmentRepository by lazy { AttachmentRepository(::conn) }
+    private val entryRepository by lazy { EntryRepository(::conn, attachmentRepository, tagRepository) }
+
     /** Initialize with a context before opening the database */
     fun init(context: Context) {
-        helper = DBHelper(context, this::migrate, DB_NAME)
+        helper = DBHelper(context, { Migrator().migrate(SQLAdapterAndroid(it)) }, DB_NAME)
     }
 
     fun dumpDatabase(output: OutputStream) {
@@ -86,13 +90,9 @@ actual object SecureDatabase {
             }
             output.flush()
         } catch (e: Exception) {
-            e.printStackTrace()
             throw e
         } finally {
-            // 4. Cleanup: Never leave the unencrypted file on the device
-            if (tempFile.exists()) {
-                tempFile.delete()
-            }
+            tempFile.delete()
         }
     }
 
@@ -133,380 +133,18 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun saveEntry(entry: Entry): Entry {
-        val db = db ?: error("DB not opened")
-        db.beginTransaction()
-        try {
-            if (entry.isPersisted) {
-                updateEntry(entry)
-            } else {
-                createEntry(entry)
-            }
+    actual fun saveEntry(entry: Entry) = entryRepository.save(entry)
 
-            db.setTransactionSuccessful()
+    actual fun countEntries(filter: EntriesFilter): Int = entryRepository.count(filter)
 
-            return getById(entry.id)
-        } finally {
-            db.endTransaction()
-        }
-    }
-
-    private fun createEntry(entry: Entry) {
-        val db = db ?: error("DB not opened")
-        check(!entry.isPersisted) { "Duplicate entry creation attempt" }
-
-        db.execSQL(
-            "INSERT INTO entry(id, name, preview) VALUES(?,?,?)",
-            arrayOf(entry.id, entry.name, entry.preview)
-        )
-
-        entry.attachments.forEach { a ->
-            db.execSQL(
-                """
-                    INSERT INTO attachment
-                    (id, entry_id, preview, mime_type, hashsum, position)
-                    VALUES (?,?,?,?,?,?)
-                    """.trimIndent(),
-                arrayOf(
-                    a.id,
-                    entry.id,
-                    a.preview,
-                    a.mimeType,
-                    a.hashsum,
-                    a.position
-                )
-            )
-            writeContent(a.id, a.content)
-        }
-
-        entry.tags.forEach { tag ->
-            db.execSQL(
-                "INSERT INTO tags(entry_id, tag) VALUES (?,?)",
-                arrayOf(entry.id, tag)
-            )
-        }
-    }
-
-    private fun updateEntry(entry: Entry) {
-        val db = db ?: error("DB not opened")
-        check(entry.isPersisted) { "Attempt to update non-existent entry" }
-        val oldEntry = getById(entry.id)
-
-        val removedTags = oldEntry.tags.minus(entry.tags)
-        if (!removedTags.isEmpty()) {
-            val placeholders = removedTags.joinToString(",") { "?" }
-            val args = arrayOf(entry.id, *removedTags.toTypedArray())
-            db.execSQL("DELETE FROM tags WHERE entry_id = ? AND tag IN ($placeholders)", args)
-        }
-
-        val addedTags = entry.tags.minus(oldEntry.tags)
-        addedTags.forEach { tag ->
-            db.execSQL("INSERT INTO tags (entry_id, tag) VALUES (?, ?)", arrayOf(entry.id, tag))
-        }
-
-        val remainingIds = entry.attachments.map { it.id }
-        val deletedIds = oldEntry.attachments.map { it.id }.filter { it !in remainingIds }
-
-        if (!deletedIds.isEmpty()) {
-            val placeholders = deletedIds.joinToString(",") { "?" }
-            db.execSQL("DELETE FROM attachment WHERE id IN ($placeholders)", deletedIds.toTypedArray())
-        }
-
-        entry.attachments.filter { !it.isPersisted }.forEach { a ->
-            db.execSQL("""
-            INSERT INTO attachment (id, entry_id, preview, mime_type, hashsum, size, position)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """.trimIndent(), arrayOf(a.id, entry.id, a.preview, a.mimeType, a.hashsum, a.size, a.position))
-
-            // Write chunks (using the 1MB split logic)
-            writeContent(a.id, a.content)
-        }
-
-        entry.attachments.filter { it.isPersisted }.forEach { currentVersion ->
-            val previousVersion = oldEntry.attachments.first { it.id == currentVersion.id }
-            if (previousVersion.position != currentVersion.position) {
-                db.execSQL("UPDATE attachment SET position = ? WHERE id = ?", arrayOf<Any>(currentVersion.position, currentVersion.id))
-            }
-        }
-
-        db.execSQL("""
-            UPDATE attachment 
-            SET position = (
-                SELECT COUNT(*) 
-                FROM attachment AS a2 
-                WHERE a2.entry_id = attachment.entry_id 
-                  AND a2.position < attachment.position
-            )
-            WHERE entry_id = ?
-        """, arrayOf(entry.id))
-    }
-
-    actual fun countEntries(filter: EntriesFilter): Int {
-        val db = db ?: error("DB not opened")
-        val args = mutableListOf<String>()
-
-        val sql = if (filter.tags.isEmpty()) {
-            "SELECT COUNT(*) FROM entry"
-        } else {
-            val placeholders = filter.tags.joinToString(",") { "?" }
-            val tagCount = filter.tags.size
-
-            """
-        SELECT COUNT(*) 
-        FROM entry e
-        WHERE (
-            SELECT COUNT(DISTINCT t.tag)
-            FROM tags t
-            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
-        ) = $tagCount
-        """.trimIndent().also {
-                filter.tags.forEach { args.add(it) }
-            }
-        }
-
-        return db.rawQuery(sql, args.toTypedArray()).use { c ->
-            if (c.moveToFirst()) c.getInt(0) else 0
-        }
-    }
-
-    actual fun findEntries(filter: EntriesFilter): List<Entry> {
-        val db = db ?: error("DB not opened")
-        val result = mutableListOf<Entry>()
-        val args = mutableListOf<String>()
-
-        val sql = if (filter.tags.isEmpty()) {
-            """
-        SELECT id AS entry_id, name, preview 
-        FROM entry 
-        ORDER BY created_at DESC 
-        LIMIT ? OFFSET ?
-        """.trimIndent().also {
-                args.add(filter.limit.toString())
-                args.add(filter.offset.toString())
-            }
-        } else {
-            // Since tags is a Set, we don't need .distinct()
-            val placeholders = filter.tags.joinToString(",") { "?" }
-            val tagCount = filter.tags.size
-
-            """
-        SELECT 
-            e.id AS entry_id, 
-            e.name, 
-            e.preview
-        FROM entry e
-        WHERE (
-            SELECT COUNT(DISTINCT t.tag)
-            FROM tags t
-            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
-        ) = $tagCount
-        ORDER BY e.created_at DESC
-        LIMIT ? OFFSET ?
-        """.trimIndent().also {
-                // Add tags for the IN clause
-                filter.tags.forEach { args.add(it) }
-                // Add pagination
-                args.add(filter.limit.toString())
-                args.add(filter.offset.toString())
-            }
-        }
-
-        // rawQuery returns a cursor that must be closed (handled by .use)
-        db.rawQuery(sql, args.toTypedArray()).use { c ->
-            val idCol = c.getColumnIndexOrThrow("entry_id")
-            val nameCol = c.getColumnIndexOrThrow("name")
-            val previewCol = c.getColumnIndexOrThrow("preview")
-
-            while (c.moveToNext()) {
-                val id = c.getString(idCol)
-
-                result.add(
-                    Entry(
-                        id = id,
-                        name = c.getString(nameCol),
-                        preview = c.getBlob(previewCol),
-                        attachments = LazyList { listAttachments(id) },
-                        tags = LazySet { listTags(id) },
-                        isPersisted = true,
-                    )
-                )
-            }
-        }
-
-        return result
-    }
+    actual fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
 
 
-    actual fun getById(entryId: String): Entry {
-        val db = db ?: error("DB not opened")
+    actual fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
 
-        db.rawQuery(
-            "SELECT * FROM entry WHERE id = ?",
-            arrayOf(entryId)
-        ).use { c ->
-            c.moveToFirst()
-            return Entry(
-                id = entryId,
-                name = c.getString(c.getColumnIndexOrThrow("name")),
-                preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                attachments = LazyList { listAttachments(entryId) },
-                tags = LazySet { listTags(entryId) },
-                isPersisted = true,
-            )
-        }
-    }
+    actual fun deleteById(entryId: String) = entryRepository.delete(entryId)
 
-    actual fun deleteById(entryId: String) {
-        val db = db ?: error("DB not opened")
-        val query = "DELETE FROM entry WHERE id = ?"
-
-        db.execSQL(query, arrayOf(entryId))
-    }
-
-    private fun listAttachments(entryId: String): List<Attachment> {
-        val db = db ?: error("DB not opened")
-        val result = mutableListOf<Attachment>()
-
-        db.rawQuery(
-            "SELECT id, mime_type, preview, `size`, hashsum, position FROM attachment WHERE entry_id = ? ORDER BY position ASC",
-            arrayOf(entryId)
-        ).use { c ->
-            while (c.moveToNext()) {
-                val attachmentId = c.getString(c.getColumnIndexOrThrow("id"))
-                result += Attachment(
-                    id = attachmentId,
-                    mimeType = c.getString(c.getColumnIndexOrThrow("mime_type")),
-                    content = getContent(attachmentId),
-                    preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                    size = c.getLong(c.getColumnIndexOrThrow("size")),
-                    position = c.getInt(c.getColumnIndexOrThrow("position")),
-                    hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum")),
-                    isPersisted = true,
-                )
-            }
-        }
-
-        return result
-    }
-
-    actual fun listTags(): Set<Tag> {
-        val db = db ?: error("DB not opened")
-        val result = mutableSetOf<Tag>()
-
-        db.rawQuery(
-            """
-            SELECT tag, COUNT(*) as frequency
-            FROM tags
-            GROUP BY tag
-            ORDER BY frequency DESC
-            """.trimIndent(),
-            null
-        ).use { c ->
-            while (c.moveToNext()) {
-                result += Tag(
-                    c.getString(0),
-                    c.getInt(1)
-                )
-            }
-        }
-
-        return result
-    }
-
-    private fun listTags(entryId: String): Set<String> {
-        val db = db ?: error("DB not opened")
-        val result = mutableSetOf<String>()
-
-        db.rawQuery(
-            "SELECT tag FROM tags WHERE entry_id = ?",
-            arrayOf(entryId)
-        ).use { c ->
-            while (c.moveToNext()) {
-                result += c.getString(0)
-            }
-        }
-
-        return result
-    }
-
-    private fun migrate(db: SQLiteDatabase) {
-        Migrator().migrate(SQLAdapterAndroid(db))
-    }
-
-    private fun getContent(attachmentId: String): Content = Content {
-        val db = db ?: error("DB not opened")
-
-        val cursor = db.rawQuery(
-            "SELECT data FROM attachment_chunk WHERE attachment_id = ? ORDER BY sequence_number ASC",
-            arrayOf(attachmentId)
-        )
-
-        val streamSequence = sequence {
-            try {
-                if (cursor.count == 0) {
-                    throw IllegalStateException("Attachment $attachmentId is missing content entirely")
-                }
-
-                while (cursor.moveToNext()) {
-                    val blob = cursor.getBlob(0)
-                    yield(blob.inputStream())
-                }
-            } catch (e: Exception) {
-                cursor.close()
-                throw e
-            }
-        }
-
-        val mergedStream = SequenceInputStream(streamSequence.asEnumeration())
-
-        object : FilterInputStream(mergedStream) {
-            private var isClosed = false
-
-            override fun close() {
-                if (isClosed) return
-                try {
-                    super.close()
-                } finally {
-                    cursor.close()
-                    isClosed = true
-                }
-            }
-        }
-    }
-
-    private fun writeContent(attachmentId: String, content: Content) {
-        val db = db ?: error("DB not opened")
-
-        val buffer = ByteArray(MAX_CHUNK_SIZE)
-
-        content.use { input ->
-            var sequenceNumber = 0
-            var totalBytesWritten = 0L
-
-            while (true) {
-                val bytesRead = input.read(buffer)
-                if (bytesRead == -1) break
-
-                val dataToInsert = if (bytesRead == MAX_CHUNK_SIZE) {
-                    buffer
-                } else {
-                    buffer.copyOf(bytesRead)
-                }
-
-                val values = ContentValues().apply {
-                    put("attachment_id", attachmentId)
-                    put("sequence_number", sequenceNumber)
-                    put("data", dataToInsert)
-                }
-
-                val rowId = db.insertOrThrow("attachment_chunk", null, values)
-                if (rowId == -1L) throw IllegalStateException("Failed to insert chunk $sequenceNumber")
-
-                sequenceNumber++
-                totalBytesWritten += bytesRead
-            }
-        }
-    }
+    actual fun listTags(): Set<Tag> = tagRepository.listTags()
 }
 
 private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {

@@ -2,6 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.util.Enumeration
 
 data class EntriesFilter(
     val limit: Int,
@@ -48,4 +49,10 @@ class LazySet<T>(
         get() = delegate.size
 
     override fun iterator(): Iterator<T> = delegate.iterator()
+}
+
+fun <T> Sequence<T>.asEnumeration(): Enumeration<T> = object : Enumeration<T> {
+    val iterator = this@asEnumeration.iterator()
+    override fun hasMoreElements(): Boolean = iterator.hasNext()
+    override fun nextElement(): T = iterator.next()
 }
