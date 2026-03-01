@@ -144,7 +144,7 @@ actual object SecureDatabase {
 
         val newAttachments = entry.attachments.filter { !it.isPersisted }
         db.prepareStatement(
-            "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?)"
+            "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`, position) VALUES (?,?,?,?,?,?,?)"
         ).use { stmt ->
             for (a in newAttachments) {
                 stmt.setString(1, a.id)
@@ -153,6 +153,8 @@ actual object SecureDatabase {
                 stmt.setString(4, a.mimeType)
                 stmt.setBytes(5, a.hashsum)
                 stmt.setLong(6, a.size)
+                stmt.setInt(7, a.position)
+
                 stmt.addBatch()
             }
             stmt.executeBatch()
@@ -161,6 +163,35 @@ actual object SecureDatabase {
         // TODO probably worth it to store data row by row instead of separating into batches
         for (a in newAttachments) {
             writeContent(a.id, a.content)
+        }
+
+        entry.attachments.filter { it.isPersisted }.forEach { currentVersion ->
+            val previousVersion = oldEntry.attachments.first { it.id == currentVersion.id }
+            if (previousVersion.position != currentVersion.position) {
+
+                db.prepareStatement(
+                    "UPDATE attachment SET `position` = ? WHERE id = ?"
+                ).use { stmt ->
+                    stmt.setInt(1, currentVersion.position)
+                    stmt.setString(2, currentVersion.id)
+                    stmt.execute()
+                }
+            }
+        }
+
+        // Fix attachment positions gaps
+        db.prepareStatement("""
+            UPDATE attachment 
+            SET position = (
+                SELECT COUNT(*) 
+                FROM attachment AS a2 
+                WHERE a2.entry_id = attachment.entry_id 
+                  AND a2.position < attachment.position
+            )
+            WHERE entry_id = ?
+            """).use { stmt ->
+                stmt.setString(1, entry.id)
+                stmt.execute()
         }
     }
 
@@ -175,7 +206,7 @@ actual object SecureDatabase {
 
             // Now insert attachments
             val attachStmt = db.prepareStatement(
-                "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`) VALUES (?,?,?,?,?,?)"
+                "INSERT INTO attachment(id, entry_id, preview, mime_type, hashsum, `size`, position) VALUES (?,?,?,?,?,?,?)"
             )
             attachStmt.use { aStmt ->
                 // Save attachment's details
@@ -186,6 +217,7 @@ actual object SecureDatabase {
                     aStmt.setString(4, a.mimeType)
                     aStmt.setBytes(5, a.hashsum)
                     aStmt.setLong(6, a.size)
+                    aStmt.setInt(7, a.position)
                     aStmt.addBatch()
                 }
                 aStmt.executeBatch()
@@ -352,8 +384,8 @@ actual object SecureDatabase {
 
     private fun listAttachments(entryId: String): List<Attachment> {
         val sql = """
-                SELECT id, mime_type, `size`, preview, hashsum FROM attachment
-                WHERE entry_id = ?
+                SELECT id, mime_type, `size`, preview, hashsum, position FROM attachment
+                WHERE entry_id = ? ORDER BY position ASC
         """
 
         val result = mutableListOf<Attachment>()
@@ -370,6 +402,7 @@ actual object SecureDatabase {
                         content = getContent(attachmentId),
                         preview = rs.getBytes("preview"),
                         size = size,
+                        position = rs.getInt("position"),
                         id = attachmentId,
                         hashsum = rs.getBytes("hashsum"),
                         isPersisted = true,
@@ -503,7 +536,6 @@ private object SqlDumpExporter {
 
     fun exportToPlainDatabase(db: Connection): File {
         val exportTo = File.createTempFile("intrakill_export_", "storage.db")
-        if (exportTo.exists()) exportTo.delete()
 
         try {
             val absolutePath = exportTo.absolutePath.replace("'", "''")
@@ -543,6 +575,7 @@ private object SqlDumpExporter {
             }
         } catch (e: Exception) {
             db.rollback()
+            exportTo.delete()
             throw e
         } finally {
             db.autoCommit = true

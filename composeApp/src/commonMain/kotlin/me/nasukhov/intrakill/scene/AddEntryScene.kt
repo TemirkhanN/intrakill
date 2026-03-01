@@ -2,7 +2,7 @@ package me.nasukhov.intrakill.scene
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
@@ -44,13 +44,13 @@ fun AddEntryScene(component: AddEntryComponent) {
                 .weight(1f)
                 .fillMaxWidth(0.5f)
         ) {
-            itemsIndexed(state.attachments) { index, media ->
+            items(state.attachments) { media ->
                 AttachmentView(
                     attachment = media,
                     editMode = true,
-                    onDelete = { component.removeAttachment(index) },
-                    onMoveUp = { component.moveAttachmentUpwards(index) },
-                    onMoveDown = { component.moveAttachmentDownwards(index) }
+                    onDelete = { component.removeAttachment(media) },
+                    onMoveUp = { component.moveAttachmentUpwards(media) },
+                    onMoveDown = { component.moveAttachmentDownwards(media) }
                 )
                 Spacer(Modifier.height(8.dp))
             }

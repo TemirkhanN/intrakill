@@ -164,15 +164,16 @@ actual object SecureDatabase {
             db.execSQL(
                 """
                     INSERT INTO attachment
-                    (id, entry_id, preview, mime_type, hashsum)
-                    VALUES (?,?,?,?,?)
+                    (id, entry_id, preview, mime_type, hashsum, position)
+                    VALUES (?,?,?,?,?,?)
                     """.trimIndent(),
                 arrayOf(
                     a.id,
                     entry.id,
                     a.preview,
                     a.mimeType,
-                    a.hashsum
+                    a.hashsum,
+                    a.position
                 )
             )
             writeContent(a.id, a.content)
@@ -212,15 +213,32 @@ actual object SecureDatabase {
         }
 
         entry.attachments.filter { !it.isPersisted }.forEach { a ->
-            // Using insertOrThrow or explicit params for BLOB safety
             db.execSQL("""
-            INSERT INTO attachment (id, entry_id, preview, mime_type, hashsum, size)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """.trimIndent(), arrayOf(a.id, entry.id, a.preview, a.mimeType, a.hashsum, a.size))
+            INSERT INTO attachment (id, entry_id, preview, mime_type, hashsum, size, position)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """.trimIndent(), arrayOf(a.id, entry.id, a.preview, a.mimeType, a.hashsum, a.size, a.position))
 
             // Write chunks (using the 1MB split logic)
             writeContent(a.id, a.content)
         }
+
+        entry.attachments.filter { it.isPersisted }.forEach { currentVersion ->
+            val previousVersion = oldEntry.attachments.first { it.id == currentVersion.id }
+            if (previousVersion.position != currentVersion.position) {
+                db.execSQL("UPDATE attachment SET position = ? WHERE id = ?", arrayOf<Any>(currentVersion.position, currentVersion.id))
+            }
+        }
+
+        db.execSQL("""
+            UPDATE attachment 
+            SET position = (
+                SELECT COUNT(*) 
+                FROM attachment AS a2 
+                WHERE a2.entry_id = attachment.entry_id 
+                  AND a2.position < attachment.position
+            )
+            WHERE entry_id = ?
+        """, arrayOf(entry.id))
     }
 
     actual fun countEntries(filter: EntriesFilter): Int {
@@ -350,7 +368,7 @@ actual object SecureDatabase {
         val result = mutableListOf<Attachment>()
 
         db.rawQuery(
-            "SELECT id, mime_type, preview, `size`, hashsum FROM attachment WHERE entry_id = ?",
+            "SELECT id, mime_type, preview, `size`, hashsum, position FROM attachment WHERE entry_id = ? ORDER BY position ASC",
             arrayOf(entryId)
         ).use { c ->
             while (c.moveToNext()) {
@@ -361,6 +379,7 @@ actual object SecureDatabase {
                     content = getContent(attachmentId),
                     preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
                     size = c.getLong(c.getColumnIndexOrThrow("size")),
+                    position = c.getInt(c.getColumnIndexOrThrow("position")),
                     hashsum = c.getBlob(c.getColumnIndexOrThrow("hashsum")),
                     isPersisted = true,
                 )

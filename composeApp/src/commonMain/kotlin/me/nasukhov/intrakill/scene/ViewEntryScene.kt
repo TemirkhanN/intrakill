@@ -81,9 +81,9 @@ fun ViewEntryScene(component: EntryComponent) {
                     AttachmentView(
                         attachment,
                         editMode = isEditing,
-                        onMoveUp = {}, // TODO
-                        onMoveDown = {}, // TODO
-                        onDelete = { if (currentEntry.attachments.size > 1) { component.deleteAttachment(attachment) } },
+                        onMoveUp = { component.moveAttachmentUpwards(attachment) },
+                        onMoveDown = {component.moveAttachmentDownwards(attachment) },
+                        onDelete = { if (currentEntry.attachments.size > 1) component.deleteAttachment(attachment) else component.deleteEntry() }
                     )
                 }
 

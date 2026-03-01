@@ -12,6 +12,8 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.content.moveDownwards
+import me.nasukhov.intrakill.content.moveUpwards
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.FilePicker
@@ -23,9 +25,9 @@ interface AddEntryComponent {
     fun save()
     fun close()
     fun promptAttachmentSelection()
-    fun removeAttachment(attachmentIndex: Int)
-    fun moveAttachmentUpwards(attachmentIndex: Int)
-    fun moveAttachmentDownwards(attachmentIndex: Int)
+    fun removeAttachment(attachment: Attachment)
+    fun moveAttachmentUpwards(attachment: Attachment)
+    fun moveAttachmentDownwards(attachment: Attachment)
 }
 
 data class NewEntryState(
@@ -78,13 +80,14 @@ class DefaultAddEntryComponent(
     override fun promptAttachmentSelection() {
         scope.launch {
             val picked = FilePicker.pickMultiple()
-            val newAttachments = picked.filter{ it.isSuccess }.map { result ->
+            val newAttachments = picked.filter{ it.isSuccess }.mapIndexed { index, result ->
                 val it = result.getOrThrow()
                 Attachment(
                     mimeType = it.mimeType,
                     content = it.content,
                     preview = it.rawPreview,
                     size = it.size,
+                    position = index
                 )
             }
             val violations = picked.filter { it.isFailure }.map { it.exceptionOrNull()!!.message ?: "Unknown error" }
@@ -101,36 +104,21 @@ class DefaultAddEntryComponent(
         }
     }
 
-    override fun removeAttachment(attachmentIndex: Int) {
+    override fun removeAttachment(attachment: Attachment) {
         mutableState.update {
-            val newList = it.attachments.toMutableList().apply { removeAt(attachmentIndex) }
-            it.copy(attachments = newList)
+            it.copy(attachments = it.attachments - attachment)
         }
     }
 
-    override fun moveAttachmentUpwards(attachmentIndex: Int) {
-        if (attachmentIndex <= 0) {
-            return
-        }
-
+    override fun moveAttachmentUpwards(attachment: Attachment) {
         mutableState.update {
-            val newList = it.attachments.toMutableList()
-            val item = newList.removeAt(attachmentIndex)
-            newList.add(attachmentIndex - 1, item)
-            it.copy(attachments = newList)
+            it.copy(attachments = it.attachments.moveUpwards(attachment))
         }
     }
 
-    override fun moveAttachmentDownwards(attachmentIndex: Int) {
-        if (attachmentIndex >= mutableState.value.attachments.lastIndex) {
-            return
-        }
-
+    override fun moveAttachmentDownwards(attachment: Attachment) {
         mutableState.update {
-            val newList = it.attachments.toMutableList()
-            val item = newList.removeAt(attachmentIndex)
-            newList.add(attachmentIndex + 1, item)
-            it.copy(attachments = newList)
+            it.copy(attachments = it.attachments.moveDownwards(attachment))
         }
     }
 

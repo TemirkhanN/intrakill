@@ -10,6 +10,8 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.content.moveDownwards
+import me.nasukhov.intrakill.content.moveUpwards
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 
@@ -34,6 +36,9 @@ interface EntryComponent {
     fun toggleEditMode()
 
     fun deleteAttachment(attachment: Attachment)
+
+    fun moveAttachmentUpwards(attachment: Attachment)
+    fun moveAttachmentDownwards(attachment: Attachment)
 
     fun changeTags(tags: Set<String>)
 }
@@ -92,6 +97,34 @@ class DefaultEntryComponent(
             scope.launch {
                 val updatedEntry = MediaRepository.save(
                     current.entry.copy(attachments = current.entry.attachments.minus(attachment))
+                )
+
+                mutableState.update { it.copy(entry = updatedEntry) }
+            }
+        }
+    }
+
+    override fun moveAttachmentUpwards(attachment: Attachment) {
+        mutableState.value.let { current ->
+            require(current.entry != null)
+
+            scope.launch {
+                val updatedEntry = MediaRepository.save(
+                    current.entry.copy(attachments = current.entry.attachments.moveUpwards(attachment))
+                )
+
+                mutableState.update { it.copy(entry = updatedEntry) }
+            }
+        }
+    }
+
+    override fun moveAttachmentDownwards(attachment: Attachment) {
+        mutableState.value.let { current ->
+            require(current.entry != null)
+
+            scope.launch {
+                val updatedEntry = MediaRepository.save(
+                    current.entry.copy(attachments = current.entry.attachments.moveDownwards(attachment))
                 )
 
                 mutableState.update { it.copy(entry = updatedEntry) }

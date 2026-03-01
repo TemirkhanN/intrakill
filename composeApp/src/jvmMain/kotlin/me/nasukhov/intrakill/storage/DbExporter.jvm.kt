@@ -23,10 +23,13 @@ actual object DbExporter {
                     // and comparing it correctly.
                     if (token != null && Security.verify(plainPassword, token)) {
                         onExportStateChange(ExportProcess.BEGUN)
-                        call.respondOutputStream {
-                            SecureDatabase.dumpDatabase(this)
+                        try {
+                            call.respondOutputStream {
+                                SecureDatabase.dumpDatabase(this)
+                            }
+                        } finally {
+                            onExportStateChange(ExportProcess.END)
                         }
-                        onExportStateChange(ExportProcess.END)
                     } else {
                         call.respond(HttpStatusCode.Forbidden)
                     }

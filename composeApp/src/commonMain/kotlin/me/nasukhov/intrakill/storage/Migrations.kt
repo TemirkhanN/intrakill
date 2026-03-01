@@ -49,6 +49,9 @@ data class Version(
 
 private interface Migration {
     val version: Version
+    val needsCleanUp: Boolean
+        get() = false
+
     fun execute(adapter: SQLAdapter)
 }
 
@@ -57,6 +60,7 @@ internal class Migrator {
         InitialMigration(),
         MigrationAddContentSizeInAttachments(),
         MigrationSplitAttachmentContentIntoChunks(),
+        MigrationAddAttachmentPosition(),
     ).sortedBy { it.version }
 
     init {
@@ -80,16 +84,20 @@ internal class Migrator {
         val currentVersion = adapter.fetchVersion()!!
 
         val newMigrations = migrations.filter { it.version > currentVersion }
+        var needsCleanUp = false
         for (migration in newMigrations) {
             adapter.transactional {
                 migration.execute(adapter)
 
                 exec("UPDATE application_metadata SET version = ${migration.version}")
+                if (!needsCleanUp) {
+                    needsCleanUp = migration.needsCleanUp
+                }
             }
         }
 
-        // Rebuild and optimize database. Helps to clean up ghost data after deletions.
-        if (!newMigrations.isEmpty()) {
+        // Rebuild and optimize database. Helps to clean up ghost data after deletions and table drops.
+        if (needsCleanUp) {
             adapter.exec("VACUUM;")
         }
     }
@@ -158,6 +166,8 @@ private class MigrationAddContentSizeInAttachments: Migration {
 private class MigrationSplitAttachmentContentIntoChunks : Migration {
     override val version: Version = Version(2026, 2, 25, 22)
 
+    override val needsCleanUp: Boolean = true
+
     override fun execute(adapter: SQLAdapter) {
         val idLength = 36
         val chunkSize = MAX_CHUNK_SIZE
@@ -214,5 +224,38 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
         adapter.exec("CREATE INDEX idx_attachment_entry_created ON attachment(entry_id, created_at)")
         adapter.exec("CREATE INDEX idx_attachment_hashsum ON attachment(hashsum)")
         adapter.exec("CREATE INDEX idx_attachment_chunk_id ON attachment_chunk(attachment_id)")
+    }
+}
+
+private class MigrationAddAttachmentPosition: Migration {
+    override val version: Version = Version(2026, 3, 1, 1, 6)
+
+    override fun execute(adapter: SQLAdapter) {
+        adapter.exec("ALTER TABLE attachment ADD COLUMN position INTEGER NOT NULL DEFAULT 0")
+
+        // Hacky way to use physical rows ordering. We create table that will represent attachments order how
+        // they were persisted on the disk since it's the only 100% reliable way to say how they are sorted.
+        // We shall delete this table right after migration
+        adapter.exec("""
+            CREATE TEMP TABLE tmp_attachment_ordering (
+                sorting_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                attachment_id TEXT,
+                entry_id TEXT
+            )
+        """)
+        adapter.exec("INSERT INTO tmp_attachment_ordering (attachment_id, entry_id) SELECT id, entry_id FROM attachment")
+
+        // amount of attachments created before the particular one defines how far it is to the first position.
+        adapter.exec("""
+            UPDATE attachment AS a
+            SET position = (
+                SELECT COUNT(*)
+                FROM tmp_attachment_ordering AS tao
+                WHERE tao.entry_id = a.entry_id
+                AND tao.sorting_id < (SELECT sorting_id FROM tmp_attachment_ordering t3 WHERE t3.attachment_id = a.id)
+            )
+        """)
+
+        adapter.exec("DROP TABLE tmp_attachment_ordering")
     }
 }
