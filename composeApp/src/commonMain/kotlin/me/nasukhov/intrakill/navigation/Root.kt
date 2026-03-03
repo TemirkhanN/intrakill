@@ -1,6 +1,7 @@
 package me.nasukhov.intrakill.navigation
 
 import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.decompose.DelicateDecomposeApi
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.childStack
@@ -93,6 +94,7 @@ class DefaultRootComponent(
         )
     }
 
+    @OptIn(DelicateDecomposeApi::class)
     private fun handleLoginRequests(request: Request) = when (request) {
         is Request.ListEntries -> navigation.replaceCurrent(Route.List())
         is Request.ImportRequested -> navigation.push(Route.Import)
@@ -112,6 +114,7 @@ class DefaultRootComponent(
         else -> error("The request $request is not supported in this component")
     }
 
+    @OptIn(DelicateDecomposeApi::class)
     private fun handleContentListRequests(request: Request) = when (request) {
         is Request.ViewEntry -> navigation.push(Route.View(request.id))
         is Request.AddEntry -> navigation.push(Route.AddEntry)

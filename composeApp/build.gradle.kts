@@ -46,8 +46,8 @@ kotlin {
             implementation(libs.ext.compose)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.compose.multiplatform.media.player)
-
             implementation(libs.ktor.server.core)
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -57,7 +57,10 @@ kotlin {
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.desktop.database.sqlcipher)
             implementation(libs.ktor.server.desktop)
-            implementation("org.bytedeco:javacv-platform:1.5.13")
+            implementation(libs.javacv.platform)
+        }
+        jvmTest.dependencies {
+            implementation(libs.junit.jupiter)
         }
     }
 }
@@ -103,4 +106,8 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

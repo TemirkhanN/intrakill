@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
+import kotlinx.datetime.TimeZone
 import me.nasukhov.intrakill.scene.AddEntryScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
 import me.nasukhov.intrakill.scene.ViewEntryScene
@@ -22,6 +23,8 @@ import me.nasukhov.intrakill.navigation.RootComponent
 import me.nasukhov.intrakill.scene.ExportScene
 import me.nasukhov.intrakill.scene.ImportScene
 import me.nasukhov.intrakill.scene.LoginScene
+
+val appTimezone = TimeZone.UTC
 
 @Composable
 fun IntrakillTheme(content: @Composable () -> Unit) {

@@ -16,10 +16,12 @@ composeMultiplatform = "1.10.1"
 composeMultiplatformMediaPlayer = "1.0.53"
 decompose = "3.4.0"
 foundation = "1.10.1"
+javacvPlatform = "1.5.13"
 jbcrypt = "0.4"
-junit = "4.13.2"
+junitJupiter = "6.0.3"
 kotlin = "2.3.10"
 kotlinx-coroutines = "1.10.2"
+kotlinxDatetime = "0.7.1"
 kotlinxSerializationJson = "1.10.0"
 ktor = "3.4.0"
 material3 = "1.9.0"
@@ -36,10 +38,10 @@ components-resources = { module = "org.jetbrains.compose.components:components-r
 compose-multiplatform-media-player = { module = "network.chaintech:compose-multiplatform-media-player", version.ref = "composeMultiplatformMediaPlayer" }
 decompose = { module = "com.arkivanov.decompose:decompose", version.ref = "decompose" }
 ext-compose = { module = "com.arkivanov.decompose:extensions-compose", version.ref = "decompose" }
+javacv-platform = { module = "org.bytedeco:javacv-platform", version.ref = "javacvPlatform" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
-junit = { module = "junit:junit", version.ref = "junit" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-testExt-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-testExt" }
 androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-espresso" }
@@ -49,6 +51,7 @@ androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecyc
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
 desktop-database-sqlcipher = { module = "io.github.willena:sqlite-jdbc", version.ref = "sqliteJdbcVersion" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
 ktor-server-android = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }

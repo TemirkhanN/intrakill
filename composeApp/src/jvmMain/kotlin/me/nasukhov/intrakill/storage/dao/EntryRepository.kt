@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.storage.dao
 
+import kotlinx.datetime.toJavaLocalDateTime
 import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.storage.EntriesFilter
@@ -19,7 +20,7 @@ class EntryRepository(
     private companion object {
         const val FIND_BY_ID = "SELECT * FROM entry WHERE id = ?"
         const val DELETE_BY_ID = "DELETE FROM entry WHERE id = ?"
-        const val CREATE_ENTRY = "INSERT INTO entry(id, name, preview) VALUES(?, ?, ?)"
+        const val CREATE_ENTRY = "INSERT INTO entry(id, name, preview, created_at) VALUES(?, ?, ?, ?)"
         const val FIND_LATEST_ENTRIES = """
             SELECT e.*
             FROM entry e
@@ -50,6 +51,20 @@ class EntryRepository(
                 GROUP BY entry_id
                 HAVING COUNT(DISTINCT tag) = ?
             ) matched ON matched.entry_id = e.id
+        """
+        const val REFRESH_PREVIEW = """
+            UPDATE entry 
+            SET preview = (
+                SELECT preview 
+                FROM attachment 
+                WHERE entry_id = entry.id AND position = 0
+            ) 
+            WHERE id = ? 
+              AND preview IS NOT (
+                  SELECT preview 
+                  FROM attachment 
+                  WHERE entry_id = entry.id AND position = 0
+              )
         """
     }
 
@@ -121,6 +136,7 @@ class EntryRepository(
             stmt.setString(1, entry.id)
             stmt.setString(2, entry.name)
             stmt.setBytes(3, entry.preview)
+            stmt.setObject(4, entry.createdAt.toJavaLocalDateTime())
             stmt.executeUpdate()
         }
 
@@ -145,6 +161,7 @@ class EntryRepository(
                     attachments = LazyList { attachmentRepository.getByEntryId(id) },
                     tags = LazySet { tagRepository.getByEntryId(id) },
                     isPersisted = true,
+                    createdAt = rs.getCreatedAt(),
                 )
             }
         }
@@ -183,6 +200,7 @@ class EntryRepository(
                             attachments = LazyList { attachmentRepository.getByEntryId(id) },
                             tags = LazySet { tagRepository.getByEntryId(id) },
                             isPersisted = true,
+                            createdAt = rs.getCreatedAt(),
                         )
                     )
                 }
@@ -220,22 +238,8 @@ class EntryRepository(
         }
     }
 
-    fun refreshPreview(entryId: String) {
-        val sql = """
-            UPDATE entry 
-            SET preview = (
-                SELECT preview 
-                FROM attachment 
-                WHERE entry_id = entry.id AND position = 0
-            ) 
-            WHERE id = ? 
-              AND preview IS NOT (
-                  SELECT preview 
-                  FROM attachment 
-                  WHERE entry_id = entry.id AND position = 0
-              )
-        """
-        db.prepareStatement(sql).use { stmt ->
+    private fun refreshPreview(entryId: String) {
+        db.prepareStatement(REFRESH_PREVIEW).use { stmt ->
             stmt.setString(1, entryId)
             stmt.executeUpdate()
         }

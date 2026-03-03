@@ -36,6 +36,13 @@ class Content {
         }
 }
 
+object MimeTypes {
+    const val IMAGE_JPG = "image/jpeg"
+    const val IMAGE_PNG = "image/png"
+    const val IMAGE_WEBP = "image/webp"
+    const val VIDEO_MP4 = "video/mp4"
+}
+
 data class Attachment(
     val mimeType: String,
     val content: Content,

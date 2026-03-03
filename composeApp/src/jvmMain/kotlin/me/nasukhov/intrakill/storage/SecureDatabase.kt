@@ -12,7 +12,14 @@ import java.sql.DriverManager
 import kotlin.use
 
 actual object SecureDatabase {
-    private const val DB_NAME = "secured.db"
+    private var DB_NAME = "secured.db"
+        set(value) {
+            if (field != value) {
+                connection?.close()
+                connection = null
+            }
+            field = value
+        }
 
     private var connection: Connection? = null
 
@@ -23,6 +30,10 @@ actual object SecureDatabase {
 
     private val attachmentRepository by lazy { AttachmentRepository(::db) }
     private val entryRepository by lazy { EntryRepository(::db, attachmentRepository, tagRepository) }
+
+    internal fun switchDb(name: String) {
+        DB_NAME = name
+    }
 
     fun dumpDatabase(output: OutputStream) {
         connection?.let {
@@ -63,6 +74,7 @@ actual object SecureDatabase {
 
     actual fun open(password: String): Boolean {
         connection?.close()
+        connection = null
 
         return try {
             val url = "jdbc:sqlite:${DB_NAME}"
