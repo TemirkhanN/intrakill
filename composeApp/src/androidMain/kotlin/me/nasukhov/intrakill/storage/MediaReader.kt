@@ -105,11 +105,11 @@ private fun generateImagePreviewAndroid(
 private fun Context.generateVideoPreview(uri: Uri): ByteArray {
     val retriever = MediaMetadataRetriever()
     val maxSize = PickedMedia.PREVIEW_SIZE.toFloat()
+    val previewAtXSecond = PickedMedia.VIDEO_PREVIEW_FRAME_AT_X_SECOND
 
     return try {
         retriever.setDataSource(this, uri)
-        // Grab frame at 3rd second
-        val rawBitmap = retriever.getFrameAtTime(3000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        val rawBitmap = retriever.getFrameAtTime(1000000L * previewAtXSecond, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             ?: return generateVideoPlaceholderStub(maxSize.toInt())
 
         val scale = min(maxSize / rawBitmap.width, maxSize / rawBitmap.height).coerceAtMost(1f)

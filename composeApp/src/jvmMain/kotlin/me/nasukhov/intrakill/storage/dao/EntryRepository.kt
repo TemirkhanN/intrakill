@@ -112,6 +112,7 @@ class EntryRepository(
         }
 
         attachmentRepository.normalizePositions(entry.id)
+        refreshPreview(entry.id)
     }
 
     private fun createEntry(entry: Entry) {
@@ -215,6 +216,27 @@ class EntryRepository(
     fun deleteById(id: String) {
         db.prepareStatement(DELETE_BY_ID).use { stmt ->
             stmt.setString(1, id)
+            stmt.executeUpdate()
+        }
+    }
+
+    fun refreshPreview(entryId: String) {
+        val sql = """
+            UPDATE entry 
+            SET preview = (
+                SELECT preview 
+                FROM attachment 
+                WHERE entry_id = entry.id AND position = 0
+            ) 
+            WHERE id = ? 
+              AND preview IS NOT (
+                  SELECT preview 
+                  FROM attachment 
+                  WHERE entry_id = entry.id AND position = 0
+              )
+        """
+        db.prepareStatement(sql).use { stmt ->
+            stmt.setString(1, entryId)
             stmt.executeUpdate()
         }
     }

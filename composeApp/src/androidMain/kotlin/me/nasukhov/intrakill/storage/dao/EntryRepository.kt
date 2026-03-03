@@ -205,5 +205,21 @@ class EntryRepository(
             )
             WHERE entry_id = ?
         """, arrayOf(entry.id))
+
+        // Refresh preview
+        db.execSQL("""
+            UPDATE entry 
+            SET preview = (
+                SELECT preview 
+                FROM attachment 
+                WHERE entry_id = entry.id AND position = 0
+            ) 
+            WHERE id = ? 
+              AND preview IS NOT (
+                  SELECT preview 
+                  FROM attachment 
+                  WHERE entry_id = entry.id AND position = 0
+              )
+        """)
     }
 }

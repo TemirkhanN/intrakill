@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.storage.PickedMedia.Companion.PREVIEW_SIZE
+import me.nasukhov.intrakill.storage.PickedMedia.Companion.VIDEO_PREVIEW_FRAME_AT_X_SECOND
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
 import org.jetbrains.skia.Color
@@ -101,7 +102,7 @@ private fun generateVideoPreview(file: File): ByteArray {
 
     return try {
         grabber.start()
-        grabber.setTimestamp(3000000)
+        grabber.setTimestamp(1000000L * VIDEO_PREVIEW_FRAME_AT_X_SECOND)
         val frame = grabber.grabImage() ?: return generateVideoPlaceholder(PREVIEW_SIZE)
 
         val converter = Java2DFrameConverter()

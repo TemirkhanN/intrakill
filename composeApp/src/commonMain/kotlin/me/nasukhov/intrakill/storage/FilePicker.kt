@@ -31,6 +31,7 @@ data class PickedMedia(
 ) {
     companion object {
         const val PREVIEW_SIZE: Int = 512
+        const val VIDEO_PREVIEW_FRAME_AT_X_SECOND = 8
     }
 }
 
