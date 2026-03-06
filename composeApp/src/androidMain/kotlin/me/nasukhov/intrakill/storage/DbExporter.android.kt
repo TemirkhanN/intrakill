@@ -1,14 +1,13 @@
 package me.nasukhov.intrakill.storage
 
 import io.ktor.http.HttpHeaders
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.cio.CIO
 import io.ktor.server.cio.CIOApplicationEngine
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.response.respond
-import io.ktor.server.response.respondOutputStream
+import io.ktor.server.response.respondFile
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import me.nasukhov.intrakill.Security
@@ -30,11 +29,13 @@ actual object DbExporter {
                         if (token != null && Security.verify(plainPassword, token)) {
                             onExportStateChange(ExportProcess.BEGUN)
 
-                            call.respondOutputStream(ContentType.Application.OctetStream) {
-                                SecureDatabase.dumpDatabase(this)
+                            val dbFile = SecureDatabase.dumpDatabase()
+                            try {
+                                call.respondFile(dbFile)
+                            } finally {
+                                dbFile.delete()
+                                onExportStateChange(ExportProcess.END)
                             }
-
-                            onExportStateChange(ExportProcess.END)
                         } else {
                             call.respond(HttpStatusCode.Forbidden)
                         }

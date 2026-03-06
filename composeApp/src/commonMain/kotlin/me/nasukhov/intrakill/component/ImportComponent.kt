@@ -16,7 +16,14 @@ data class ImportState(
     val password: String = "",
     val violations: List<String> = emptyList(),
     val isInProgress: Boolean = false,
-)
+    val progress: Int = 0
+) {
+    init {
+        check(progress in 0..100) { "Progress must be in range 0..100" }
+    }
+
+    val progressFloat = progress.toFloat() / 100
+}
 
 interface ImportComponent {
     val state: Value<ImportState>
@@ -70,7 +77,11 @@ class DefaultImportComponent(
                 DbImporter.importDatabase(
                     ip = current.ip,
                     password = current.password
-                )
+                ) { progress ->
+                    if (progress > state.value.progress) {
+                        mutableState.update { it.copy(progress = progress) }
+                    }
+                }
             } catch (e: Exception) {
                 errors += (e.message ?: "Fatal error on import attempt.")
                 false

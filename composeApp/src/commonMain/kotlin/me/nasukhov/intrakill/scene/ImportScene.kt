@@ -49,7 +49,11 @@ fun ImportScene(component: ImportComponent) {
             modifier = Modifier.fillMaxWidth()
         ) {
             if (state.isInProgress) {
-                LinearProgressIndicator()
+                if (state.progress == 0) {
+                    LinearProgressIndicator()
+                } else {
+                    LinearProgressIndicator(progress = { state.progressFloat })
+                }
             } else {
                 Text("Import")
             }

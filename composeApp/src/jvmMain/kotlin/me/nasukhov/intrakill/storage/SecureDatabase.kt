@@ -6,7 +6,6 @@ import me.nasukhov.intrakill.storage.dao.AttachmentRepository
 import me.nasukhov.intrakill.storage.dao.EntryRepository
 import me.nasukhov.intrakill.storage.dao.TagRepository
 import java.io.File
-import java.io.OutputStream
 import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.use
@@ -35,11 +34,7 @@ actual object SecureDatabase {
         DB_NAME = name
     }
 
-    fun dumpDatabase(output: OutputStream) {
-        connection?.let {
-            SqlDumpExporter.dumpDatabase(it, output)
-        }
-    }
+    fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
 
     fun importFromFile(file: File, password: String): Boolean {
         try {
@@ -110,24 +105,6 @@ actual object SecureDatabase {
 }
 
 private object SqlDumpExporter {
-    fun dumpDatabase(conn: Connection, out: OutputStream) {
-        val unencryptedFile = exportToPlainDatabase(conn)
-
-        try {
-            unencryptedFile.inputStream().use { input ->
-                // standard 8KB buffer for streaming
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    out.write(buffer, 0, bytesRead)
-                }
-            }
-            out.flush()
-        } finally {
-            unencryptedFile.delete()
-        }
-    }
-
     fun exportToPlainDatabase(db: Connection): File {
         val exportTo = File.createTempFile("intrakill_export_", "storage.db")
 

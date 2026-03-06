@@ -23,11 +23,11 @@ actual object DbExporter {
                     // and comparing it correctly.
                     if (token != null && Security.verify(plainPassword, token)) {
                         onExportStateChange(ExportProcess.BEGUN)
+                        val dbFile = SecureDatabase.dumpDatabase()
                         try {
-                            call.respondOutputStream {
-                                SecureDatabase.dumpDatabase(this)
-                            }
+                            call.respondFile(dbFile)
                         } finally {
+                            dbFile.delete()
                             onExportStateChange(ExportProcess.END)
                         }
                     } else {

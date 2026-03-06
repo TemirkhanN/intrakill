@@ -9,11 +9,16 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 actual object DbImporter {
-    actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean = withContext(Dispatchers.IO) {
+    actual suspend fun importDatabase(
+        ip: String,
+        port: Int,
+        password: String,
+        onProgress: (Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             val tempFile = File(DbFileResolver.ctx.cacheDir, "unencrypted.db")
 
-            downloadDumpToFile(ip, port, password, tempFile)
+            downloadDumpToFile(ip, port, password, tempFile, onProgress)
 
             try {
                 SecureDatabase.importFromFile(tempFile, password)
@@ -29,7 +34,8 @@ actual object DbImporter {
         ip: String,
         port: Int,
         password: String,
-        targetFile: File
+        targetFile: File,
+        onProgress: (Int) -> Unit
     ) = withContext(Dispatchers.IO) {
         val token = Security.hash(password)
         val url = URL("http://$ip:$port/dump")
@@ -43,10 +49,23 @@ actual object DbImporter {
 
             when (responseCode) {
                 HttpURLConnection.HTTP_OK -> {
+                    val totalBytes = contentLength.toLong()
+
                     inputStream.use { input ->
                         targetFile.outputStream().use { output ->
-                            // copyTo uses an 8KB buffer internally - OOM proof!
-                            input.copyTo(output)
+                            val buffer = ByteArray(8192)
+                            var bytesRead: Int
+                            var totalRead = 0L
+
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                output.write(buffer, 0, bytesRead)
+                                totalRead += bytesRead
+
+                                if (totalBytes > 0) {
+                                    onProgress(progress(totalRead, totalBytes))
+                                }
+                            }
+                            output.flush()
                         }
                     }
                 }
@@ -55,6 +74,8 @@ actual object DbImporter {
             }
         }
     }
+
+    private fun progress(bytes: Long, outOf: Long): Int = ((bytes.toFloat()/outOf) * 100).toInt()
 }
 
 actual object DbFileResolver {

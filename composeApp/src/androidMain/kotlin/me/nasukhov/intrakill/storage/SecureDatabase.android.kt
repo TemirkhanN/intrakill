@@ -9,7 +9,6 @@ import me.nasukhov.intrakill.storage.dao.AttachmentRepository
 import me.nasukhov.intrakill.storage.dao.EntryRepository
 import me.nasukhov.intrakill.storage.dao.TagRepository
 import java.io.File
-import java.io.OutputStream
 import kotlin.use
 
 private class DBHelper(
@@ -60,40 +59,24 @@ actual object SecureDatabase {
         helper = DBHelper(context, { Migrator().migrate(SQLAdapterAndroid(it)) }, DB_NAME)
     }
 
-    fun dumpDatabase(output: OutputStream) {
+    fun dumpDatabase(): File {
         val context = helper!!.ctx
         val db = db!!
         val tempFile = File(context.cacheDir, "temp_unsecured.db")
         if (tempFile.exists()) tempFile.delete()
 
-        try {
-            // 2. Export the encrypted database to the plain temp file
-            // We use the same 'sqlcipher_export' logic we discussed
-            val escapedPath = tempFile.absolutePath.replace("'", "''")
+        val escapedPath = tempFile.absolutePath.replace("'", "''")
 
-            // Attach a new, empty, plaintext database
-            db.execSQL("ATTACH DATABASE '$escapedPath' AS plain_db KEY ''")
+        // Attach a new, empty, plaintext database
+        db.execSQL("ATTACH DATABASE '$escapedPath' AS plain_db KEY ''")
 
-            // gemini keeps trying to use execSQL even though procedures like this work only with rawsql call
-            db.rawExecSQL("SELECT sqlcipher_export('plain_db')")
+        // gemini keeps trying to use execSQL even though procedures like this work only with rawsql call
+        db.rawExecSQL("SELECT sqlcipher_export('plain_db')")
 
-            // Detach so the file is flushed and unlocked
-            db.execSQL("DETACH DATABASE plain_db")
+        // Detach so the file is flushed and unlocked
+        db.execSQL("DETACH DATABASE plain_db")
 
-            // 3. Stream the raw bytes of the unencrypted file to the output
-            tempFile.inputStream().use { input ->
-                val buffer = ByteArray(8192) // 8KB buffer
-                var bytesRead: Int
-                while (input.read(buffer).also { bytesRead = it } != -1) {
-                    output.write(buffer, 0, bytesRead)
-                }
-            }
-            output.flush()
-        } catch (e: Exception) {
-            throw e
-        } finally {
-            tempFile.delete()
-        }
+        return tempFile
     }
 
     fun importFromFile(file: File, password: String): Boolean {

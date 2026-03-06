@@ -27,7 +27,7 @@ private data class Request(private val url: URL, private val authToken: String) 
 actual object DbImporter {
     private val db = SecureDatabase
 
-    actual suspend fun importDatabase(ip: String, port: Int, password: String): Boolean =
+    actual suspend fun importDatabase(ip: String, port: Int, password: String, onProgress: (Int) -> Unit): Boolean =
         withContext(Dispatchers.IO) {
             val request = Request.getDbDump(ip, port, password)
 
@@ -35,9 +35,23 @@ actual object DbImporter {
                 when (responseCode) {
                     HttpURLConnection.HTTP_OK -> {
                         val tmpFile = File.createTempFile("intrakill_", "_unencrypted.db").also { it.deleteOnExit() }
+
+                        val totalBytes = contentLength.toLong()
                         inputStream.use { input ->
                             tmpFile.outputStream().use { output ->
-                                input.copyTo(output)
+                                val buffer = ByteArray(8192)
+                                var bytesRead: Int
+                                var totalRead = 0L
+
+                                while (input.read(buffer).also { bytesRead = it } != -1) {
+                                    output.write(buffer, 0, bytesRead)
+                                    totalRead += bytesRead
+
+                                    if (totalBytes > 0) {
+                                        onProgress(progress(totalRead, totalBytes))
+                                    }
+                                }
+                                output.flush()
                             }
                         }
 
@@ -52,6 +66,8 @@ actual object DbImporter {
                 }
             }
         }
+
+    private fun progress(bytes: Long, outOf: Long): Int = ((bytes.toFloat()/outOf) * 100).toInt()
 }
 
 // TODO use this instead of interacting with the db directly.
