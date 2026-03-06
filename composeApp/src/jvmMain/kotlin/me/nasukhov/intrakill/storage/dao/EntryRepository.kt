@@ -117,11 +117,12 @@ class EntryRepository(
         attachmentRepository.addToEntry(entry.id, newAttachments)
 
         val oldById = oldEntry.attachments.associateBy { it.id }
-        val switched = entry.attachments
-            .mapNotNull { current ->
-                val prev = oldById[current.id] ?: return@mapNotNull null
-                if (prev.position != current.position) current else null
-            }
+        val switched =
+            entry.attachments
+                .mapNotNull { current ->
+                    val prev = oldById[current.id] ?: return@mapNotNull null
+                    if (prev.position != current.position) current else null
+                }
         if (!switched.isEmpty()) {
             attachmentRepository.updatePositions(switched)
         }
@@ -172,11 +173,12 @@ class EntryRepository(
 
         val hasTags = filter.tags.isNotEmpty()
 
-        val query = if (!hasTags) {
-            FIND_LATEST_ENTRIES
-        } else {
-            FIND_LATEST_ENTRIES_FILTERED.format(filter.tags.placeholders())
-        }
+        val query =
+            if (!hasTags) {
+                FIND_LATEST_ENTRIES
+            } else {
+                FIND_LATEST_ENTRIES_FILTERED.format(filter.tags.placeholders())
+            }
 
         db.prepareStatement(query).use { stmt ->
             var nextIndex = 1
@@ -201,7 +203,7 @@ class EntryRepository(
                             tags = LazySet { tagRepository.getByEntryId(id) },
                             isPersisted = true,
                             createdAt = rs.getCreatedAt(),
-                        )
+                        ),
                     )
                 }
             }
@@ -213,11 +215,12 @@ class EntryRepository(
     fun countByFilter(filter: EntriesFilter): Int {
         val hasTags = filter.tags.isNotEmpty()
 
-        val sql = if (!hasTags) {
-            COUNT_ALL_ENTRIES
-        } else {
-            COUNT_ALL_ENTRIES_FILTERED.format(filter.tags.placeholders())
-        }
+        val sql =
+            if (!hasTags) {
+                COUNT_ALL_ENTRIES
+            } else {
+                COUNT_ALL_ENTRIES_FILTERED.format(filter.tags.placeholders())
+            }
 
         db.prepareStatement(sql).use { stmt ->
             if (hasTags) {

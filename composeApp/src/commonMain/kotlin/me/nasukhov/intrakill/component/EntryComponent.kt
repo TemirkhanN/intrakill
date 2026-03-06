@@ -38,6 +38,7 @@ interface EntryComponent {
     fun deleteAttachment(attachment: Attachment)
 
     fun moveAttachmentUpwards(attachment: Attachment)
+
     fun moveAttachmentDownwards(attachment: Attachment)
 
     fun changeTags(tags: Set<String>)
@@ -46,9 +47,10 @@ interface EntryComponent {
 class DefaultEntryComponent(
     context: ComponentContext,
     entryId: String,
-    private val navigate: (Request) -> Unit
-): EntryComponent, ComponentContext by context {
-    private val mutableState = MutableValue(EntryState(entryId=entryId, isLoading = true))
+    private val navigate: (Request) -> Unit,
+) : EntryComponent,
+    ComponentContext by context {
+    private val mutableState = MutableValue(EntryState(entryId = entryId, isLoading = true))
     override val state: Value<EntryState> = mutableState
     private val scope = instanceKeeper.coroutineScope()
 
@@ -56,11 +58,13 @@ class DefaultEntryComponent(
         scope.launch {
             var entry = MediaRepository.findById(entryId)
             val knownTags = MediaRepository.listTags()
-            mutableState.update { it.copy(
-                entry = entry,
-                isLoading = false,
-                knownTags = knownTags,
-            ) }
+            mutableState.update {
+                it.copy(
+                    entry = entry,
+                    isLoading = false,
+                    knownTags = knownTags,
+                )
+            }
         }
 
         context.backHandler.register(BackCallback(onBack = ::close))
@@ -95,9 +99,10 @@ class DefaultEntryComponent(
             require(current.entry.attachments.size > 1) { "Entry must have at least 1 attachment." }
 
             scope.launch {
-                val updatedEntry = MediaRepository.save(
-                    current.entry.copy(attachments = current.entry.attachments.minus(attachment))
-                )
+                val updatedEntry =
+                    MediaRepository.save(
+                        current.entry.copy(attachments = current.entry.attachments.minus(attachment)),
+                    )
 
                 mutableState.update { it.copy(entry = updatedEntry) }
             }
@@ -109,9 +114,10 @@ class DefaultEntryComponent(
             require(current.entry != null)
 
             scope.launch {
-                val updatedEntry = MediaRepository.save(
-                    current.entry.copy(attachments = current.entry.attachments.moveUpwards(attachment))
-                )
+                val updatedEntry =
+                    MediaRepository.save(
+                        current.entry.copy(attachments = current.entry.attachments.moveUpwards(attachment)),
+                    )
 
                 mutableState.update { it.copy(entry = updatedEntry) }
             }
@@ -123,9 +129,10 @@ class DefaultEntryComponent(
             require(current.entry != null)
 
             scope.launch {
-                val updatedEntry = MediaRepository.save(
-                    current.entry.copy(attachments = current.entry.attachments.moveDownwards(attachment))
-                )
+                val updatedEntry =
+                    MediaRepository.save(
+                        current.entry.copy(attachments = current.entry.attachments.moveDownwards(attachment)),
+                    )
 
                 mutableState.update { it.copy(entry = updatedEntry) }
             }

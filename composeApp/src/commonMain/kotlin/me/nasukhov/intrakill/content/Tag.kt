@@ -2,7 +2,7 @@ package me.nasukhov.intrakill.content
 
 data class Tag(
     val name: String,
-    val frequency: Int
+    val frequency: Int,
 ) {
     companion object {
         const val MAX_LENGTH = 32

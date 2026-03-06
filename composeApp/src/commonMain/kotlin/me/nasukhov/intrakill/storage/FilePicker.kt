@@ -15,12 +15,13 @@ enum class MediaKind {
     VIDEO,
 }
 
-fun String.mediaKind() = when {
-    startsWith("image/") && this != "image/gif" -> MediaKind.IMAGE
-    this == "image/gif" -> MediaKind.GIF
-    startsWith("video/") -> MediaKind.VIDEO
-    else -> error("Unsupported media type: $this")
-}
+fun String.mediaKind() =
+    when {
+        startsWith("image/") && this != "image/gif" -> MediaKind.IMAGE
+        this == "image/gif" -> MediaKind.GIF
+        startsWith("video/") -> MediaKind.VIDEO
+        else -> error("Unsupported media type: $this")
+    }
 
 data class PickedMedia(
     val name: String,

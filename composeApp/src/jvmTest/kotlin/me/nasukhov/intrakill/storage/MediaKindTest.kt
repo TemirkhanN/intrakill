@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
 class MediaKindTest {
-
     @Test
     fun `image jpeg maps to IMAGE`() {
         assertEquals(MediaKind.IMAGE, "image/jpeg".mediaKind())

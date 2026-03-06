@@ -7,7 +7,7 @@ import java.util.Enumeration
 data class EntriesFilter(
     val limit: Int,
     val offset: Int = 0,
-    val tags: Set<String> = emptySet()
+    val tags: Set<String> = emptySet(),
 )
 
 // Chunk size in application_chunk.data column is no more than this value across all devices.
@@ -19,6 +19,7 @@ expect object SecureDatabase {
     fun saveEntry(entry: Entry): Entry
 
     fun findEntries(filter: EntriesFilter): List<Entry>
+
     fun countEntries(filter: EntriesFilter): Int
 
     fun listTags(): Set<Tag>
@@ -29,19 +30,18 @@ expect object SecureDatabase {
 }
 
 class LazyList<T>(
-    loader: () -> List<T>
+    loader: () -> List<T>,
 ) : AbstractList<T>() {
     private val delegate: List<T> by lazy(loader)
 
     override val size: Int
         get() = delegate.size
 
-    override fun get(index: Int): T =
-        delegate[index]
+    override fun get(index: Int): T = delegate[index]
 }
 
 class LazySet<T>(
-    loader: () -> Set<T>
+    loader: () -> Set<T>,
 ) : AbstractSet<T>() {
     private val delegate: Set<T> by lazy(loader)
 
@@ -51,8 +51,11 @@ class LazySet<T>(
     override fun iterator(): Iterator<T> = delegate.iterator()
 }
 
-fun <T> Sequence<T>.asEnumeration(): Enumeration<T> = object : Enumeration<T> {
-    val iterator = this@asEnumeration.iterator()
-    override fun hasMoreElements(): Boolean = iterator.hasNext()
-    override fun nextElement(): T = iterator.next()
-}
+fun <T> Sequence<T>.asEnumeration(): Enumeration<T> =
+    object : Enumeration<T> {
+        val iterator = this@asEnumeration.iterator()
+
+        override fun hasMoreElements(): Boolean = iterator.hasNext()
+
+        override fun nextElement(): T = iterator.next()
+    }

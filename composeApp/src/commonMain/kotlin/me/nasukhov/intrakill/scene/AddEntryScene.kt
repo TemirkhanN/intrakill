@@ -1,6 +1,11 @@
 package me.nasukhov.intrakill.scene
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -13,26 +18,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
-import me.nasukhov.intrakill.view.AttachmentView
-import me.nasukhov.intrakill.view.TagsInput
 import me.nasukhov.intrakill.component.AddEntryComponent
+import me.nasukhov.intrakill.view.AttachmentView
 import me.nasukhov.intrakill.view.ReturnButton
+import me.nasukhov.intrakill.view.TagsInput
 
 @Composable
 fun AddEntryScene(component: AddEntryComponent) {
     val state by component.state.subscribeAsState()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         ReturnButton(component::close)
 
         Button(
             enabled = !state.isSaving,
             onClick = component::promptAttachmentSelection,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Select photos / videos")
         }
@@ -40,9 +46,10 @@ fun AddEntryScene(component: AddEntryComponent) {
         Spacer(Modifier.height(12.dp))
 
         LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(0.5f)
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(0.5f),
         ) {
             items(state.attachments) { media ->
                 AttachmentView(
@@ -50,7 +57,7 @@ fun AddEntryScene(component: AddEntryComponent) {
                     editMode = true,
                     onDelete = { component.removeAttachment(media) },
                     onMoveUp = { component.moveAttachmentUpwards(media) },
-                    onMoveDown = { component.moveAttachmentDownwards(media) }
+                    onMoveDown = { component.moveAttachmentDownwards(media) },
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -63,13 +70,13 @@ fun AddEntryScene(component: AddEntryComponent) {
             onValueChange = component::changeName,
             label = { Text("Name or description") },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !state.isSaving
+            enabled = !state.isSaving,
         )
 
         TagsInput(
             knownTags = state.knownTags,
             onTagsChanged = component::changeTags,
-            isEnabled = !state.isSaving
+            isEnabled = !state.isSaving,
         )
 
         Spacer(Modifier.height(12.dp))
@@ -77,7 +84,7 @@ fun AddEntryScene(component: AddEntryComponent) {
         Button(
             enabled = !state.isSaving,
             onClick = component::save,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.isSaving) {
                 CircularProgressIndicator()

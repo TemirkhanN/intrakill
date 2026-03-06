@@ -42,21 +42,24 @@ fun TagsInput(
     val currentText = textFieldValue.text
     val currentPrefix = currentText.substringAfterLast(tagsDelimiter).trim().lowercase()
 
-    val suggestions = remember(currentPrefix, finalizedTags, knownTags) {
-        knownTags.asSequence()
-            .map { it.name.lowercase() }
-            .filter { it !in finalizedTags && it.startsWith(currentPrefix) && it != currentPrefix }
-            .sortedByDescending { tag -> knownTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
-            .take(maxSuggestions)
-            .toList()
-    }
+    val suggestions =
+        remember(currentPrefix, finalizedTags, knownTags) {
+            knownTags
+                .asSequence()
+                .map { it.name.lowercase() }
+                .filter { it !in finalizedTags && it.startsWith(currentPrefix) && it != currentPrefix }
+                .sortedByDescending { tag -> knownTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
+                .take(maxSuggestions)
+                .toList()
+        }
 
     if (isEnabled && suggestions.isNotEmpty()) {
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
             FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
             ) {
                 suggestions.forEach { tag ->
                     key(tag) {
@@ -71,7 +74,7 @@ fun TagsInput(
                                 onTagsChanged(newSet)
 
                                 // TODO make configurable? Currently, it seems to be better if suggestions stay
-                                //textFieldValue = TextFieldValue("", TextRange(0))
+                                // textFieldValue = TextFieldValue("", TextRange(0))
                             },
                         )
                     }
@@ -105,28 +108,31 @@ fun TagsInput(
                     textFieldValue = newValue
                 }
             },
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier =
+                Modifier
+                    .fillMaxWidth(),
         )
 
         // Display finalized tags as "chips" or a simple list so user sees what's locked in
         if (finalizedTags.isNotEmpty()) {
             FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 finalizedTags.forEach { tag ->
                     Text(
                         "#$tag",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable {
-                            finalizedTags = finalizedTags - tag
-                            onTagsChanged(finalizedTags)
-                        }
+                        modifier =
+                            Modifier.clickable {
+                                finalizedTags = finalizedTags - tag
+                                onTagsChanged(finalizedTags)
+                            },
                     )
                 }
             }

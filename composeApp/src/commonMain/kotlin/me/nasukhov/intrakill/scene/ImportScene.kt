@@ -22,16 +22,17 @@ fun ImportScene(component: ImportComponent) {
     val state by component.state.subscribeAsState()
 
     Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .fillMaxWidth()
+        modifier =
+            Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
     ) {
         OutlinedTextField(
             value = state.ip,
             onValueChange = component::changeIp,
             label = { Text("Source IP") },
             enabled = !state.isInProgress,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
 
         OutlinedTextField(
@@ -40,13 +41,13 @@ fun ImportScene(component: ImportComponent) {
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             enabled = !state.isInProgress,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Button(
             onClick = component::import,
             enabled = !state.isInProgress,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         ) {
             if (state.isInProgress) {
                 if (state.progress == 0) {
@@ -65,9 +66,8 @@ fun ImportScene(component: ImportComponent) {
             Text(
                 text = state.violations.joinToString("\n"),
                 color = Color.Red,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp),
             )
         }
     }
 }
-

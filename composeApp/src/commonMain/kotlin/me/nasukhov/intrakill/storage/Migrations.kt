@@ -26,6 +26,7 @@ data class Version(
     }
 
     override fun toString(): String = "%04d%02d%02d%02d%02d".format(year, month, day, hour, minute)
+
     override fun compareTo(other: Version): Int = toString().compareTo(other.toString())
 
     companion object {
@@ -39,11 +40,11 @@ data class Version(
                 month = version.substring(4, 6).toInt(),
                 day = version.substring(6, 8).toInt(),
                 hour = version.substring(8, 10).toInt(),
-                minute = version.substring(10, 12).toInt()
+                minute = version.substring(10, 12).toInt(),
             )
         }
 
-        val NONE = Version(2000, 1,1, 0, 0)
+        val NONE = Version(2000, 1, 1, 0, 0)
     }
 }
 
@@ -56,12 +57,13 @@ private interface Migration {
 }
 
 internal class Migrator {
-    private val migrations = listOf(
-        InitialMigration(),
-        MigrationAddContentSizeInAttachments(),
-        MigrationSplitAttachmentContentIntoChunks(),
-        MigrationAddAttachmentPosition(),
-    ).sortedBy { it.version }
+    private val migrations =
+        listOf(
+            InitialMigration(),
+            MigrationAddContentSizeInAttachments(),
+            MigrationSplitAttachmentContentIntoChunks(),
+            MigrationAddAttachmentPosition(),
+        ).sortedBy { it.version }
 
     init {
         check(migrations.size == migrations.associateBy { it.version }.size) {
@@ -71,11 +73,13 @@ internal class Migrator {
 
     fun migrate(adapter: SQLAdapter) {
         // Migration's system info required for the entire thing to function
-        adapter.exec("""
+        adapter.exec(
+            """
             CREATE TABLE IF NOT EXISTS `application_metadata` (
                 version TEXT NOT NULL
             );
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val versionSanityCheck = adapter.fetchVersion()
         if (versionSanityCheck == null) {
@@ -118,11 +122,11 @@ private class InitialMigration : Migration {
             );
             CREATE INDEX IF NOT EXISTS idx_entry_created_at ON entry(created_at);
             CREATE INDEX IF NOT EXISTS idx_entry_name ON entry(`name`);
-            """
+            """,
         )
 
         adapter.exec(
-        """
+            """
             CREATE TABLE IF NOT EXISTS attachment (
                 id TEXT PRIMARY KEY CHECK(length(id) = $idLength),
                 entry_id TEXT NOT NULL CHECK(length(entry_id) = $idLength),
@@ -136,11 +140,11 @@ private class InitialMigration : Migration {
             CREATE INDEX IF NOT EXISTS idx_attachment_entry ON attachment(entry_id);
             CREATE INDEX IF NOT EXISTS idx_attachment_entry_created ON attachment(entry_id, created_at);
             CREATE INDEX IF NOT EXISTS idx_attachment_hashsum ON attachment(hashsum);
-            """
+            """,
         )
 
         adapter.exec(
-        """
+            """
                 CREATE TABLE IF NOT EXISTS tags (
                     entry_id TEXT NOT NULL CHECK(length(entry_id) = $idLength),
                     tag TEXT NOT NULL CHECK(length(tag) <= 32),
@@ -149,12 +153,12 @@ private class InitialMigration : Migration {
                 );
                 CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);
                 CREATE INDEX IF NOT EXISTS idx_tags_entry ON tags(entry_id);
-            """
+            """,
         )
     }
 }
 
-private class MigrationAddContentSizeInAttachments: Migration {
+private class MigrationAddContentSizeInAttachments : Migration {
     override val version: Version = Version(2026, 2, 25, 18)
 
     override fun execute(adapter: SQLAdapter) {
@@ -172,7 +176,8 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
         val idLength = 36
         val chunkSize = MAX_CHUNK_SIZE
 
-        adapter.exec("""
+        adapter.exec(
+            """
             CREATE TABLE attachment_new (
                 id TEXT PRIMARY KEY CHECK(length(id) = $idLength),
                 entry_id TEXT NOT NULL CHECK(length(entry_id) = $idLength),
@@ -183,9 +188,11 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
                 hashsum BLOB NOT NULL,
                 FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
             )
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        adapter.exec("""
+        adapter.exec(
+            """
             CREATE TABLE attachment_chunk (
                 attachment_id TEXT NOT NULL,
                 sequence_number INTEGER NOT NULL,
@@ -193,14 +200,18 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
                 PRIMARY KEY (attachment_id, sequence_number),
                 FOREIGN KEY (attachment_id) REFERENCES attachment_new(id) ON DELETE CASCADE
             )
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        adapter.exec("""
+        adapter.exec(
+            """
             INSERT INTO attachment_new (id, entry_id, preview, size, mime_type, created_at, hashsum)
             SELECT id, entry_id, preview, size, mime_type, created_at, hashsum FROM attachment
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        adapter.exec("""
+        adapter.exec(
+            """
             INSERT INTO attachment_chunk (attachment_id, sequence_number, data)
             WITH RECURSIVE splitter(att_id, offset, seq) AS (
                 SELECT id, 1, 0 FROM attachment WHERE content IS NOT NULL
@@ -215,7 +226,8 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
                 substr(a.content, s.offset, $chunkSize)
             FROM splitter s
             JOIN attachment a ON s.att_id = a.id
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         adapter.exec("DROP TABLE attachment")
         adapter.exec("ALTER TABLE attachment_new RENAME TO attachment")
@@ -227,7 +239,7 @@ private class MigrationSplitAttachmentContentIntoChunks : Migration {
     }
 }
 
-private class MigrationAddAttachmentPosition: Migration {
+private class MigrationAddAttachmentPosition : Migration {
     override val version: Version = Version(2026, 3, 1, 1, 6)
 
     override fun execute(adapter: SQLAdapter) {
@@ -236,17 +248,20 @@ private class MigrationAddAttachmentPosition: Migration {
         // Hacky way to use physical rows ordering. We create table that will represent attachments order how
         // they were persisted on the disk since it's the only 100% reliable way to say how they are sorted.
         // We shall delete this table right after migration
-        adapter.exec("""
+        adapter.exec(
+            """
             CREATE TEMP TABLE tmp_attachment_ordering (
                 sorting_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 attachment_id TEXT,
                 entry_id TEXT
             )
-        """)
+        """,
+        )
         adapter.exec("INSERT INTO tmp_attachment_ordering (attachment_id, entry_id) SELECT id, entry_id FROM attachment")
 
         // amount of attachments created before the particular one defines how far it is to the first position.
-        adapter.exec("""
+        adapter.exec(
+            """
             UPDATE attachment AS a
             SET position = (
                 SELECT COUNT(*)
@@ -254,7 +269,8 @@ private class MigrationAddAttachmentPosition: Migration {
                 WHERE tao.entry_id = a.entry_id
                 AND tao.sorting_id < (SELECT sorting_id FROM tmp_attachment_ordering t3 WHERE t3.attachment_id = a.id)
             )
-        """)
+        """,
+        )
 
         adapter.exec("DROP TABLE tmp_attachment_ordering")
     }

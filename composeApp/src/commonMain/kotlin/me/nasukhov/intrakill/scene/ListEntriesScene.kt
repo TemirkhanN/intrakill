@@ -3,10 +3,22 @@ package me.nasukhov.intrakill.scene
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -18,24 +30,27 @@ import me.nasukhov.intrakill.component.ListEntriesComponent
 import me.nasukhov.intrakill.view.Paginator
 import me.nasukhov.intrakill.view.TagsInput
 
-private val styling = object {
-    val gridCells = GridCells.Adaptive(minSize = 144.dp)
-    val verticalArrangement = Arrangement.spacedBy(6.dp)
-    val horizontalArrangement = Arrangement.spacedBy(6.dp)
-    val padding = PaddingValues(8.dp)
-    val headerVerticalArrangement = Arrangement.spacedBy(16.dp)
+private val styling =
+    object {
+        val gridCells = GridCells.Adaptive(minSize = 144.dp)
+        val verticalArrangement = Arrangement.spacedBy(6.dp)
+        val horizontalArrangement = Arrangement.spacedBy(6.dp)
+        val padding = PaddingValues(8.dp)
+        val headerVerticalArrangement = Arrangement.spacedBy(16.dp)
 
-    val cell = object {
-        val aspectRatio = 1f
-        val padding = 6.dp
-        val alignment = Alignment.Center
-        val border = object {
-            val size = 1.dp
-            val color = Color.DarkGray
-            val shape = RoundedCornerShape(4.dp)
-        }
+        val cell =
+            object {
+                val aspectRatio = 1f
+                val padding = 6.dp
+                val alignment = Alignment.Center
+                val border =
+                    object {
+                        val size = 1.dp
+                        val color = Color.DarkGray
+                        val shape = RoundedCornerShape(4.dp)
+                    }
+            }
     }
-}
 
 @Composable
 fun ListEntriesScene(component: ListEntriesComponent) {
@@ -54,7 +69,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = styling.padding,
             verticalArrangement = styling.verticalArrangement,
-            horizontalArrangement = styling.horizontalArrangement
+            horizontalArrangement = styling.horizontalArrangement,
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = styling.headerVerticalArrangement) {
@@ -72,16 +87,17 @@ fun ListEntriesScene(component: ListEntriesComponent) {
             if (!isSearching && searchResult !== null) {
                 items(searchResult.entries) { entry ->
                     Box(
-                        modifier = Modifier
-                            .aspectRatio(styling.cell.aspectRatio)
-                            .border(styling.cell.border.size, styling.cell.border.color, styling.cell.border.shape)
-                            .clickable { component.onEntryClicked(entry.id) }
-                            .padding(styling.cell.padding),
-                        contentAlignment = styling.cell.alignment
+                        modifier =
+                            Modifier
+                                .aspectRatio(styling.cell.aspectRatio)
+                                .border(styling.cell.border.size, styling.cell.border.color, styling.cell.border.shape)
+                                .clickable { component.onEntryClicked(entry.id) }
+                                .padding(styling.cell.padding),
+                        contentAlignment = styling.cell.alignment,
                     ) {
                         Image(
                             bitmap = entry.preview.asImageBitmap(),
-                            contentDescription = entry.name
+                            contentDescription = entry.name,
                         )
                     }
                 }
@@ -91,7 +107,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                         offset = state.offset,
                         maxEntriesPerPage = state.entriesPerPage,
                         total = searchResult.outOfTotal,
-                        onOffsetChange = component::onOffsetChanged
+                        onOffsetChange = component::onOffsetChanged,
                     )
                 }
             }

@@ -20,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import me.nasukhov.intrakill.content.Attachment
 import chaintech.videoplayer.host.MediaPlayerHost
 import chaintech.videoplayer.model.ScreenResize
-import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import chaintech.videoplayer.model.VideoPlayerConfig
+import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.scene.asImageBitmap
 import java.io.File
 
@@ -35,14 +35,14 @@ fun VideoPlayer(attachment: Attachment) {
     var isLoaded by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .aspectRatio(16f/9),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .aspectRatio(16f / 9),
+        contentAlignment = Alignment.Center,
     ) {
-
         Crossfade(
-            targetState = isLoaded
+            targetState = isLoaded,
         ) { isReady ->
             if (isReady) {
                 RealPlayer(attachment)
@@ -50,10 +50,11 @@ fun VideoPlayer(attachment: Attachment) {
                 Image(
                     bitmap = attachment.preview.asImageBitmap(),
                     contentDescription = "Video Preview",
-                    modifier = Modifier
-                        .clickable { isLoaded = true }
-                        .border(1.dp, Color.Cyan)
-                        .fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .clickable { isLoaded = true }
+                            .border(1.dp, Color.Cyan)
+                            .fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
             }
@@ -70,12 +71,13 @@ private fun RealPlayer(attachment: Attachment) {
     LaunchedEffect(attachment.content) {
         withContext(Dispatchers.IO) {
             try {
-                val file = File.createTempFile("intrakill_vid_", ".mp4").apply {
-                    outputStream().use {
-                        output -> attachment.content.use { it.copyTo(output) }
+                val file =
+                    File.createTempFile("intrakill_vid_", ".mp4").apply {
+                        outputStream().use { output ->
+                            attachment.content.use { it.copyTo(output) }
+                        }
+                        deleteOnExit()
                     }
-                    deleteOnExit()
-                }
                 tempFile = file
             } catch (e: Exception) {
                 error = e.message ?: "Failed to write video to disk"
@@ -95,26 +97,28 @@ private fun RealPlayer(attachment: Attachment) {
 
         else -> {
             val file = tempFile!!
-            val playerHost = remember(file.absolutePath) {
-                MediaPlayerHost(
-                    mediaUrl = file.absolutePath,
-                    isMuted = false,
-                    autoPlay = true,
-                    isLooping = false,
-                    initialVideoFitMode = ScreenResize.FIT
-                )
-            }
+            val playerHost =
+                remember(file.absolutePath) {
+                    MediaPlayerHost(
+                        mediaUrl = file.absolutePath,
+                        isMuted = false,
+                        autoPlay = true,
+                        isLooping = false,
+                        initialVideoFitMode = ScreenResize.FIT,
+                    )
+                }
             VideoPlayerComposable(
                 modifier = Modifier.fillMaxSize(),
                 playerHost = playerHost,
-                playerConfig = VideoPlayerConfig(
-                    isPauseResumeEnabled = true,
-                    isSeekBarVisible = true,
-                    isDurationVisible = true,
-                    isAutoHideControlEnabled = true,
-                    isGestureVolumeControlEnabled = false,
-                    controlHideIntervalSeconds = 5,
-                )
+                playerConfig =
+                    VideoPlayerConfig(
+                        isPauseResumeEnabled = true,
+                        isSeekBarVisible = true,
+                        isDurationVisible = true,
+                        isAutoHideControlEnabled = true,
+                        isGestureVolumeControlEnabled = false,
+                        controlHideIntervalSeconds = 5,
+                    ),
             )
             DisposableEffect(playerHost) {
                 onDispose {

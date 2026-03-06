@@ -31,7 +31,7 @@ fun AttachmentView(
     editMode: Boolean = false,
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
 ) {
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -43,7 +43,7 @@ fun AttachmentView(
                     bitmap = attachment.content.readBytes().asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth
+                    contentScale = ContentScale.FillWidth,
                 )
             }
             MediaKind.VIDEO -> {
@@ -52,7 +52,7 @@ fun AttachmentView(
             else -> {
                 Box(
                     modifier = Modifier.aspectRatio(1f),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text("Attachment is not supported.", color = Color.Gray)
                 }
@@ -61,13 +61,14 @@ fun AttachmentView(
 
         if (editMode) {
             Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                    .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-                    .padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                        .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
+                        .padding(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 ControlToolButton(text = "↑", onClick = onMoveUp)
                 ControlToolButton(text = "↓", onClick = onMoveDown)
@@ -81,20 +82,21 @@ fun AttachmentView(
 private fun ControlToolButton(
     text: String,
     color: Color = Color.White,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     Box(
-        modifier = Modifier
-            .size(24.dp)
-            .border(1.dp, Color.Gray.copy(alpha = 0.5f))
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .size(24.dp)
+                .border(1.dp, Color.Gray.copy(alpha = 0.5f))
+                .clickable { onClick() },
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             color = color,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
     }
 }

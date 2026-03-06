@@ -9,11 +9,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun PageError(errorMsg: String, content: @Composable () -> Unit = {}) {
+fun PageError(
+    errorMsg: String,
+    content: @Composable () -> Unit = {},
+) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth(),
-        contentAlignment = Alignment.Center
+        modifier =
+            Modifier
+                .fillMaxWidth(),
+        contentAlignment = Alignment.Center,
     ) {
         Text(errorMsg, color = MaterialTheme.colorScheme.error)
         content()

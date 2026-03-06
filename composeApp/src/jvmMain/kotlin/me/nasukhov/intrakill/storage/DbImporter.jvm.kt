@@ -6,29 +6,41 @@ import me.nasukhov.intrakill.Security
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 
-private data class Request(private val url: URI, private val authToken: String) {
+private data class Request(
+    private val url: URI,
+    private val authToken: String,
+) {
     companion object {
-        fun getDbDump(ip: String, port: Int, password: String) = Request(
-            URI("http://$ip:$port/dump"), Security.hash(password)
+        fun getDbDump(
+            ip: String,
+            port: Int,
+            password: String,
+        ) = Request(
+            URI("http://$ip:$port/dump"),
+            Security.hash(password),
         )
     }
 
-    fun <R> exec(block: HttpURLConnection.() -> R): R {
-        return (url.toURL().openConnection() as HttpURLConnection).apply {
-            connectTimeout = 5000
-            readTimeout = 300000
-            requestMethod = "GET"
-            setRequestProperty("Authorization", authToken)
-        }.block()
-    }
+    fun <R> exec(block: HttpURLConnection.() -> R): R =
+        (url.toURL().openConnection() as HttpURLConnection)
+            .apply {
+                connectTimeout = 5000
+                readTimeout = 300000
+                requestMethod = "GET"
+                setRequestProperty("Authorization", authToken)
+            }.block()
 }
 
 actual object DbImporter {
     private val db = SecureDatabase
 
-    actual suspend fun importDatabase(ip: String, port: Int, password: String, onProgress: (Int) -> Unit): Boolean =
+    actual suspend fun importDatabase(
+        ip: String,
+        port: Int,
+        password: String,
+        onProgress: (Int) -> Unit,
+    ): Boolean =
         withContext(Dispatchers.IO) {
             val request = Request.getDbDump(ip, port, password)
 
@@ -68,7 +80,10 @@ actual object DbImporter {
             }
         }
 
-    private fun progress(bytes: Long, outOf: Long): Int = ((bytes.toFloat()/outOf) * 100).toInt()
+    private fun progress(
+        bytes: Long,
+        outOf: Long,
+    ): Int = ((bytes.toFloat() / outOf) * 100).toInt()
 }
 
 // TODO use this instead of interacting with the db directly.

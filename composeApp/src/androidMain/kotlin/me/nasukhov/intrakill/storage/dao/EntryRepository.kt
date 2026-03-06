@@ -10,69 +10,71 @@ import kotlin.use
 class EntryRepository(
     private val dbResolver: () -> SQLiteDatabase,
     private val attachmentRepository: AttachmentRepository,
-    private val tagRepository: TagRepository
+    private val tagRepository: TagRepository,
 ) {
     private val db: SQLiteDatabase
         get() = dbResolver()
 
     fun findById(id: String): Entry? {
-        db.rawQuery(
-            "SELECT * FROM entry WHERE id = ?",
-            arrayOf(id)
-        ).use { c ->
-            if (!c.moveToFirst()) return null
+        db
+            .rawQuery(
+                "SELECT * FROM entry WHERE id = ?",
+                arrayOf(id),
+            ).use { c ->
+                if (!c.moveToFirst()) return null
 
-            return Entry(
-                id = id,
-                name = c.getString(c.getColumnIndexOrThrow("name")),
-                preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
-                attachments = LazyList { attachmentRepository.listAttachments(id) },
-                tags = LazySet { tagRepository.listEntryTags(id) },
-                isPersisted = true,
-            )
-        }
+                return Entry(
+                    id = id,
+                    name = c.getString(c.getColumnIndexOrThrow("name")),
+                    preview = c.getBlob(c.getColumnIndexOrThrow("preview")),
+                    attachments = LazyList { attachmentRepository.listAttachments(id) },
+                    tags = LazySet { tagRepository.listEntryTags(id) },
+                    isPersisted = true,
+                )
+            }
     }
 
     fun findByFilter(filter: EntriesFilter): List<Entry> {
         val result = mutableListOf<Entry>()
         val args = mutableListOf<String>()
 
-        val sql = if (filter.tags.isEmpty()) {
-            """
-        SELECT id AS entry_id, name, preview 
-        FROM entry 
-        ORDER BY created_at DESC 
-        LIMIT ? OFFSET ?
-        """.trimIndent().also {
-                args.add(filter.limit.toString())
-                args.add(filter.offset.toString())
-            }
-        } else {
-            // Since tags is a Set, we don't need .distinct()
-            val placeholders = filter.tags.placeholders()
-            val tagCount = filter.tags.size
+        val sql =
+            if (filter.tags.isEmpty()) {
+                """
+                SELECT id AS entry_id, name, preview 
+                FROM entry 
+                ORDER BY created_at DESC 
+                LIMIT ? OFFSET ?
+                """.trimIndent().also {
+                    args.add(filter.limit.toString())
+                    args.add(filter.offset.toString())
+                }
+            } else {
+                // Since tags is a Set, we don't need .distinct()
+                val placeholders = filter.tags.placeholders()
+                val tagCount = filter.tags.size
 
-            """
-        SELECT 
-            e.id AS entry_id, 
-            e.name, 
-            e.preview
-        FROM entry e
-        WHERE (
-            SELECT COUNT(DISTINCT t.tag)
-            FROM tags t
-            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
-        ) = $tagCount
-        ORDER BY e.created_at DESC
-        LIMIT ? OFFSET ?
-        """.trimIndent().also {
-                // Add tags for the IN clause
-                filter.tags.forEach { args.add(it) }
-                // Add pagination
-                args.add(filter.limit.toString())
-                args.add(filter.offset.toString())
+                """
+                SELECT 
+                    e.id AS entry_id, 
+                    e.name, 
+                    e.preview
+                FROM entry e
+                WHERE (
+                    SELECT COUNT(DISTINCT t.tag)
+                    FROM tags t
+                    WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
+                ) = $tagCount
+                ORDER BY e.created_at DESC
+                LIMIT ? OFFSET ?
+                """.trimIndent().also {
+                    // Add tags for the IN clause
+                    filter.tags.forEach { args.add(it) }
+                    // Add pagination
+                    args.add(filter.limit.toString())
+                    args.add(filter.offset.toString())
+                }
             }
-        }
 
         // rawQuery returns a cursor that must be closed (handled by .use)
         db.rawQuery(sql, args.toTypedArray()).use { c ->
@@ -91,7 +93,7 @@ class EntryRepository(
                         attachments = LazyList { attachmentRepository.listAttachments(id) },
                         tags = LazySet { tagRepository.listEntryTags(id) },
                         isPersisted = true,
-                    )
+                    ),
                 )
             }
         }
@@ -102,24 +104,25 @@ class EntryRepository(
     fun count(filter: EntriesFilter): Int {
         val args = mutableListOf<String>()
 
-        val sql = if (filter.tags.isEmpty()) {
-            "SELECT COUNT(*) FROM entry"
-        } else {
-            val placeholders = filter.tags.joinToString(",") { "?" }
-            val tagCount = filter.tags.size
+        val sql =
+            if (filter.tags.isEmpty()) {
+                "SELECT COUNT(*) FROM entry"
+            } else {
+                val placeholders = filter.tags.joinToString(",") { "?" }
+                val tagCount = filter.tags.size
 
-            """
-        SELECT COUNT(*) 
-        FROM entry e
-        WHERE (
-            SELECT COUNT(DISTINCT t.tag)
-            FROM tags t
-            WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
-        ) = $tagCount
-        """.trimIndent().also {
-                filter.tags.forEach { args.add(it) }
+                """
+                SELECT COUNT(*) 
+                FROM entry e
+                WHERE (
+                    SELECT COUNT(DISTINCT t.tag)
+                    FROM tags t
+                    WHERE t.entry_id = e.id AND t.tag IN ($placeholders)
+                ) = $tagCount
+                """.trimIndent().also {
+                    filter.tags.forEach { args.add(it) }
+                }
             }
-        }
 
         return db.rawQuery(sql, args.toTypedArray()).use { c ->
             if (c.moveToFirst()) c.getInt(0) else 0
@@ -154,7 +157,7 @@ class EntryRepository(
 
         db.execSQL(
             "INSERT INTO entry(id, name, preview) VALUES(?,?,?)",
-            arrayOf(entry.id, entry.name, entry.preview)
+            arrayOf(entry.id, entry.name, entry.preview),
         )
 
         attachmentRepository.addToEntry(entry.id, entry.attachments)
@@ -195,7 +198,8 @@ class EntryRepository(
         }
 
         // normalize
-        db.execSQL("""
+        db.execSQL(
+            """
             UPDATE attachment 
             SET position = (
                 SELECT COUNT(*) 
@@ -204,10 +208,13 @@ class EntryRepository(
                   AND a2.position < attachment.position
             )
             WHERE entry_id = ?
-        """, arrayOf(entry.id))
+        """,
+            arrayOf(entry.id),
+        )
 
         // Refresh preview
-        db.execSQL("""
+        db.execSQL(
+            """
             UPDATE entry 
             SET preview = (
                 SELECT preview 
@@ -220,6 +227,7 @@ class EntryRepository(
                   FROM attachment 
                   WHERE entry_id = entry.id AND position = 0
               )
-        """)
+        """,
+        )
     }
 }

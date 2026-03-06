@@ -1,9 +1,21 @@
 package me.nasukhov.intrakill.scene
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
@@ -20,19 +32,19 @@ fun TagList(
     var expanded by remember { mutableStateOf(expandedInitially) }
 
     // Show selected tags first, then all others.
-    val visibleTags = if (expanded) {
-        selectedTags + tags
-    } else {
-        // If not expanded, show all selected tags and some more if initiallyVisible count isn't reached.
-        (selectedTags + tags).take(max(selectedTags.size, initiallyVisible))
-    }
+    val visibleTags =
+        if (expanded) {
+            selectedTags + tags
+        } else {
+            // If not expanded, show all selected tags and some more if initiallyVisible count isn't reached.
+            (selectedTags + tags).take(max(selectedTags.size, initiallyVisible))
+        }
 
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
         Column(modifier = Modifier.fillMaxWidth()) {
-
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 visibleTags.forEach { tag ->
                     val selected = tag in selectedTags
@@ -40,13 +52,14 @@ fun TagList(
                     FilterChip(
                         selected = selected,
                         onClick = {
-                            selectedTags = if (selected) {
-                                selectedTags - tag
-                            } else {
-                                selectedTags + tag
-                            }
+                            selectedTags =
+                                if (selected) {
+                                    selectedTags - tag
+                                } else {
+                                    selectedTags + tag
+                                }
                         },
-                        label = { Text(tag) }
+                        label = { Text(tag) },
                     )
                 }
             }
@@ -55,13 +68,13 @@ fun TagList(
                 Spacer(Modifier.height(8.dp))
 
                 TextButton(
-                    onClick = { expanded = !expanded }
+                    onClick = { expanded = !expanded },
                 ) {
                     Text(if (expanded) "less tags" else "more tags")
                 }
             }
 
-            TextButton(onClick = {onTagsChanged(selectedTags)}) {
+            TextButton(onClick = { onTagsChanged(selectedTags) }) {
                 Text("Find")
             }
         }

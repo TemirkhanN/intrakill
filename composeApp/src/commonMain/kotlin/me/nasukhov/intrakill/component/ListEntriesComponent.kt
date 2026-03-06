@@ -17,7 +17,6 @@ import me.nasukhov.intrakill.scene.asFlow
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
 import kotlin.math.max
-import kotlin.time.measureTime
 
 data class ListState(
     val filteredByTags: Set<String> = emptySet(),
@@ -37,20 +36,24 @@ interface ListEntriesComponent {
     val knownTags: Value<Set<Tag>>
 
     fun onTagsChanged(tags: Set<String>)
+
     fun onOffsetChanged(offset: Int)
+
     fun onEntryClicked(id: String)
+
     fun onAddClicked()
 }
 
 class DefaultListEntriesComponent(
     context: ComponentContext,
     filterByTags: Set<String> = emptySet(),
-    private val navigate: (Request) -> Unit
-) : ListEntriesComponent, ComponentContext by context {
+    private val navigate: (Request) -> Unit,
+) : ListEntriesComponent,
+    ComponentContext by context {
     private data class FilterParams(
         val tags: Set<String> = emptySet(),
         val offset: Int = 0,
-        val limit: Int = 12
+        val limit: Int = 12,
     )
 
     override val knownTags = MutableValue<Set<Tag>>(emptySet())
@@ -66,23 +69,27 @@ class DefaultListEntriesComponent(
         scope.launch {
             merge(
                 filters.asFlow().map { it to false },
-                MediaRepository.updates.map { filters.value to true }
-            )
-            .collectLatest { (filter, isStorageUpdated) ->
-                mutableState.update { it.copy(
-                    isSearching = true,
-                    filteredByTags = filter.tags,
-                    offset = filter.offset,
-                ) }
+                MediaRepository.updates.map { filters.value to true },
+            ).collectLatest { (filter, isStorageUpdated) ->
+                mutableState.update {
+                    it.copy(
+                        isSearching = true,
+                        filteredByTags = filter.tags,
+                        offset = filter.offset,
+                    )
+                }
 
-                val result = MediaRepository.findEntries(
-                    EntriesFilter(limit = filter.limit, offset = filter.offset, tags = filter.tags)
-                )
+                val result =
+                    MediaRepository.findEntries(
+                        EntriesFilter(limit = filter.limit, offset = filter.offset, tags = filter.tags),
+                    )
 
-                mutableState.update { it.copy(
-                    searchResult = result,
-                    isSearching = false
-                ) }
+                mutableState.update {
+                    it.copy(
+                        searchResult = result,
+                        isSearching = false,
+                    )
+                }
                 if (isStorageUpdated) {
                     refreshKnownTags()
                 }
@@ -91,15 +98,17 @@ class DefaultListEntriesComponent(
 
         refreshKnownTags()
 
-        context.backHandler.register(BackCallback(onBack = {
-            state.value.let {
-                // Unless we're already on the very first page, move backwards.
-                if (it.offset != 0) {
-                    val previousPageOffset = max(it.offset - it.entriesPerPage, 0)
-                    onOffsetChanged(previousPageOffset)
+        context.backHandler.register(
+            BackCallback(onBack = {
+                state.value.let {
+                    // Unless we're already on the very first page, move backwards.
+                    if (it.offset != 0) {
+                        val previousPageOffset = max(it.offset - it.entriesPerPage, 0)
+                        onOffsetChanged(previousPageOffset)
+                    }
                 }
-            }
-        }))
+            }),
+        )
     }
 
     override fun onTagsChanged(tags: Set<String>) {
@@ -111,6 +120,7 @@ class DefaultListEntriesComponent(
     }
 
     override fun onEntryClicked(id: String) = navigate(Request.ViewEntry(id))
+
     override fun onAddClicked() = navigate(Request.AddEntry)
 
     private fun refreshKnownTags() {

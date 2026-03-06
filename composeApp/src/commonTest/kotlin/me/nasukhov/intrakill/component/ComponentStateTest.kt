@@ -8,7 +8,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListStateTest {
-
     @Test
     fun listStateDefaultValuesAreSensible() {
         val state = ListState()
@@ -61,7 +60,6 @@ class ListStateTest {
 }
 
 class NewEntryStateTest {
-
     @Test
     fun newEntryStateDefaultValuesAreEmpty() {
         val state = NewEntryState()
@@ -83,7 +81,6 @@ class NewEntryStateTest {
 }
 
 class LoginStateTest {
-
     @Test
     fun loginStateDefaultValuesAreEmpty() {
         val state = LoginState()
@@ -101,7 +98,6 @@ class LoginStateTest {
 }
 
 class EntryStateTest {
-
     @Test
     fun entryStateInitializesWithCorrectEntryId() {
         val id = "some-entry-id"

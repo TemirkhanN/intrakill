@@ -19,16 +19,19 @@ interface LoginComponent {
     val state: Value<LoginState>
 
     fun onPasswordChanged(newValue: String)
+
     fun onUnlockClicked()
+
     fun onImportClicked()
+
     fun onExportClicked()
 }
 
 class DefaultLoginComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit
-) : LoginComponent, ComponentContext by context {
-
+    private val navigate: (Request) -> Unit,
+) : LoginComponent,
+    ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
     private val mutableState = MutableValue(LoginState())
     override val state: Value<LoginState> = mutableState
@@ -60,6 +63,7 @@ class DefaultLoginComponent(
     }
 
     override fun onImportClicked() = navigate(Request.ImportRequested)
+
     override fun onExportClicked() = navigate(Request.ExportRequested)
 
     private fun validate(state: LoginState): List<String> {

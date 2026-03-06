@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
 class ContentTest {
-
     @Test
     fun `readBytes returns correct content`() {
         val expected = "hello world".toByteArray()
@@ -48,14 +47,14 @@ class ContentTest {
 }
 
 class AttachmentMoveTest {
-
-    private fun attachment(pos: Int) = Attachment(
-        mimeType = MimeTypes.IMAGE_PNG,
-        content = Content { byteArrayOf().inputStream() },
-        preview = byteArrayOf(),
-        size = 0L,
-        position = pos,
-    )
+    private fun attachment(pos: Int) =
+        Attachment(
+            mimeType = MimeTypes.IMAGE_PNG,
+            content = Content { byteArrayOf().inputStream() },
+            preview = byteArrayOf(),
+            size = 0L,
+            position = pos,
+        )
 
     @Test
     fun `moveUpwards at position 0 returns same list`() {
@@ -148,28 +147,29 @@ class AttachmentMoveTest {
 }
 
 class AttachmentMediaKindTest {
-
     @Test
     fun `image attachment has IMAGE media kind`() {
-        val attachment = Attachment(
-            mimeType = MimeTypes.IMAGE_PNG,
-            content = Content { byteArrayOf().inputStream() },
-            preview = byteArrayOf(),
-            size = 0L,
-            position = 0,
-        )
+        val attachment =
+            Attachment(
+                mimeType = MimeTypes.IMAGE_PNG,
+                content = Content { byteArrayOf().inputStream() },
+                preview = byteArrayOf(),
+                size = 0L,
+                position = 0,
+            )
         assertEquals(me.nasukhov.intrakill.storage.MediaKind.IMAGE, attachment.mediaKind)
     }
 
     @Test
     fun `video attachment has VIDEO media kind`() {
-        val attachment = Attachment(
-            mimeType = MimeTypes.VIDEO_MP4,
-            content = Content { byteArrayOf().inputStream() },
-            preview = byteArrayOf(),
-            size = 0L,
-            position = 0,
-        )
+        val attachment =
+            Attachment(
+                mimeType = MimeTypes.VIDEO_MP4,
+                content = Content { byteArrayOf().inputStream() },
+                preview = byteArrayOf(),
+                size = 0L,
+                position = 0,
+            )
         assertEquals(me.nasukhov.intrakill.storage.MediaKind.VIDEO, attachment.mediaKind)
     }
 }

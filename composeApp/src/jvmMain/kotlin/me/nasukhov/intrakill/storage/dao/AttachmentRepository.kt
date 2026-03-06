@@ -10,7 +10,9 @@ import java.sql.Connection
 import kotlin.collections.forEach
 import kotlin.use
 
-class AttachmentRepository(private val dbResolver: () -> Connection) {
+class AttachmentRepository(
+    private val dbResolver: () -> Connection,
+) {
     private val db: Connection
         get() = dbResolver()
 
@@ -63,7 +65,7 @@ class AttachmentRepository(private val dbResolver: () -> Connection) {
                             position = rs.getInt("position"),
                             hashsum = rs.getBytes("hashsum"),
                             isPersisted = true,
-                        )
+                        ),
                     )
                 }
             }
@@ -72,7 +74,10 @@ class AttachmentRepository(private val dbResolver: () -> Connection) {
         return result
     }
 
-    fun addToEntry(entryId: String, attachments: List<Attachment>) {
+    fun addToEntry(
+        entryId: String,
+        attachments: List<Attachment>,
+    ) {
         if (attachments.isEmpty()) return
 
         db.prepareStatement(ADD_ATTACHMENT_TO_ENTRY).use { stmt ->
@@ -95,7 +100,10 @@ class AttachmentRepository(private val dbResolver: () -> Connection) {
         }
     }
 
-    fun deleteExcluding(entryId: String, excludedAttachmentsIds: Set<String>) {
+    fun deleteExcluding(
+        entryId: String,
+        excludedAttachmentsIds: Set<String>,
+    ) {
         if (excludedAttachmentsIds.isEmpty()) {
             db.prepareStatement(DELETE_ALL_BY_ENTRY_ID).use {
                 it.setString(1, entryId)
@@ -131,34 +139,39 @@ class AttachmentRepository(private val dbResolver: () -> Connection) {
         }
     }
 
-    private fun getContent(attachmentId: String): Content = Content {
-        val stmt = db.prepareStatement(FETCH_CONTENT_CHUNKS)
-        stmt.setString(1, attachmentId)
-        val rs = stmt.executeQuery()
+    private fun getContent(attachmentId: String): Content =
+        Content {
+            val stmt = db.prepareStatement(FETCH_CONTENT_CHUNKS)
+            stmt.setString(1, attachmentId)
+            val rs = stmt.executeQuery()
 
-        val streamSequence = sequence {
-            var hasData = false
-            while (rs.next()) {
-                hasData = true
-                yield(rs.getBinaryStream(1))
-            }
-            if (!hasData) throw IllegalStateException("Attachment $attachmentId is missing content entirely")
-        }
+            val streamSequence =
+                sequence {
+                    var hasData = false
+                    while (rs.next()) {
+                        hasData = true
+                        yield(rs.getBinaryStream(1))
+                    }
+                    if (!hasData) throw IllegalStateException("Attachment $attachmentId is missing content entirely")
+                }
 
-        // Wrap sequence stream in filterInput so that result set is closed when the stream gets closed
-        object : FilterInputStream(SequenceInputStream(streamSequence.asEnumeration())) {
-            override fun close() {
-                try {
-                    super.close()
-                } finally {
-                    rs.close()
-                    stmt.close()
+            // Wrap sequence stream in filterInput so that result set is closed when the stream gets closed
+            object : FilterInputStream(SequenceInputStream(streamSequence.asEnumeration())) {
+                override fun close() {
+                    try {
+                        super.close()
+                    } finally {
+                        rs.close()
+                        stmt.close()
+                    }
                 }
             }
         }
-    }
 
-    private fun writeContent(attachmentId: String, content: Content) {
+    private fun writeContent(
+        attachmentId: String,
+        content: Content,
+    ) {
         val buffer = ByteArray(MAX_CHUNK_SIZE)
 
         db.prepareStatement(DELETE_CONTENT).use { stmt ->

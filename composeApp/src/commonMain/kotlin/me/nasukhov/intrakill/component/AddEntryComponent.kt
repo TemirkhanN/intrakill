@@ -20,13 +20,21 @@ import me.nasukhov.intrakill.storage.FilePicker
 
 interface AddEntryComponent {
     val state: Value<NewEntryState>
+
     fun changeName(name: String)
+
     fun changeTags(newTags: Set<String>)
+
     fun save()
+
     fun close()
+
     fun promptAttachmentSelection()
+
     fun removeAttachment(attachment: Attachment)
+
     fun moveAttachmentUpwards(attachment: Attachment)
+
     fun moveAttachmentDownwards(attachment: Attachment)
 }
 
@@ -36,14 +44,14 @@ data class NewEntryState(
     val knownTags: Set<Tag> = emptySet(),
     val attachments: List<Attachment> = emptyList(),
     val violations: List<String> = emptyList(),
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
 )
 
 class DefaultAddEntryComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit
-): AddEntryComponent, ComponentContext by context {
-
+    private val navigate: (Request) -> Unit,
+) : AddEntryComponent,
+    ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
     private val mutableState = MutableValue(NewEntryState())
     override val state: Value<NewEntryState> = mutableState
@@ -64,42 +72,51 @@ class DefaultAddEntryComponent(
     }
 
     override fun changeName(name: String) {
-        mutableState.update { it.copy(
-            name = name,
-            violations = emptyList(),
-        ) }
+        mutableState.update {
+            it.copy(
+                name = name,
+                violations = emptyList(),
+            )
+        }
     }
 
     override fun changeTags(newTags: Set<String>) {
-        mutableState.update { it.copy(
-            selectedTags = newTags,
-            violations = emptyList(),
-        ) }
+        mutableState.update {
+            it.copy(
+                selectedTags = newTags,
+                violations = emptyList(),
+            )
+        }
     }
 
     override fun promptAttachmentSelection() {
         scope.launch {
             val picked = FilePicker.pickMultiple()
-            val newAttachments = picked.filter{ it.isSuccess }.mapIndexed { index, result ->
-                val it = result.getOrThrow()
-                Attachment(
-                    mimeType = it.mimeType,
-                    content = it.content,
-                    preview = it.rawPreview,
-                    size = it.size,
-                    position = index
-                )
-            }
+            val newAttachments =
+                picked.filter { it.isSuccess }.mapIndexed { index, result ->
+                    val it = result.getOrThrow()
+                    Attachment(
+                        mimeType = it.mimeType,
+                        content = it.content,
+                        preview = it.rawPreview,
+                        size = it.size,
+                        position = index,
+                    )
+                }
             val violations = picked.filter { it.isFailure }.map { it.exceptionOrNull()!!.message ?: "Unknown error" }
             if (!newAttachments.isEmpty()) {
-                mutableState.update { it.copy(
-                    attachments = newAttachments,
-                    violations = violations,
-                ) }
+                mutableState.update {
+                    it.copy(
+                        attachments = newAttachments,
+                        violations = violations,
+                    )
+                }
             } else if (violations.isNotEmpty()) {
-                mutableState.update { it.copy(
-                    violations = violations,
-                )}
+                mutableState.update {
+                    it.copy(
+                        violations = violations,
+                    )
+                }
             }
         }
     }
@@ -137,16 +154,17 @@ class DefaultAddEntryComponent(
         scope.launch {
             mutableState.update { it.copy(isSaving = true, violations = violations) }
             try {
-                val entry = withContext(Dispatchers.IO) {
-                    MediaRepository.save(
-                        Entry(
-                            name = current.name,
-                            preview = current.attachments.first().preview,
-                            attachments = current.attachments,
-                            tags = current.selectedTags
+                val entry =
+                    withContext(Dispatchers.IO) {
+                        MediaRepository.save(
+                            Entry(
+                                name = current.name,
+                                preview = current.attachments.first().preview,
+                                attachments = current.attachments,
+                                tags = current.selectedTags,
+                            ),
                         )
-                    )
-                }
+                    }
                 navigate(Request.ViewEntry(entry.id))
             } catch (e: Exception) {
                 mutableState.update { it.copy(violations = listOf("[Fatal] Failed to save: ${e.message}"), isSaving = false) }

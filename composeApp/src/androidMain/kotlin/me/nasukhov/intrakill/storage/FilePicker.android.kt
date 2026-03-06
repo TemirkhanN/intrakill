@@ -3,7 +3,10 @@ package me.nasukhov.intrakill.storage
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,52 +35,56 @@ internal interface AndroidFilePickerDelegate {
 
 /**
  * Android implementation for Compose Multiplatform.
- *
- * Wrap your Android UI with this to initialize FilePicker.
  */
 @Composable
-actual fun ProvideFilePicker(
-    content: @Composable () -> Unit
-) {
-    // TODO this is an architectural flow consequence preventing too big files
+actual fun ProvideFilePicker(content: @Composable () -> Unit) {
     val maxAllowedFileSize: FileSize = 100 * 1024 * 1024
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var continuation by remember { mutableStateOf<((List<Result<PickedMedia>>) -> Unit)?>(null) }
+    var continuation: ((List<Result<PickedMedia>>) -> Unit)? = null
 
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenMultipleDocuments()
-    ) { uris: List<Uri> ->
-        val cont = continuation
-        continuation = null
-        if (cont == null) return@rememberLauncherForActivityResult
+    val launcher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenMultipleDocuments(),
+        ) { uris: List<Uri> ->
+            val cont = continuation
+            continuation = null
+            if (cont == null) return@rememberLauncherForActivityResult
 
-        // Launch coroutine in remembered scope
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                uris.map { uri ->
-                    context.readPickedMedia(uri).mapCatching { media ->
-                        check(media.size <= maxAllowedFileSize) {
-                            "File is too big (${media.size.MB()} out of ${maxAllowedFileSize.MB()})"
+            scope.launch {
+                val result =
+                    withContext(Dispatchers.IO) {
+                        uris.map { uri ->
+                            context.readPickedMedia(uri).mapCatching { media ->
+                                check(media.size <= maxAllowedFileSize) {
+                                    "File is too big (${media.size.mb} out of ${maxAllowedFileSize.mb})"
+                                }
+                                media
+                            }
                         }
-                        media
                     }
-                }
-            }
-            cont(result)
-        }
-    }
 
-    val delegate = remember {
-        object : AndroidFilePickerDelegate {
-            override suspend fun pickMultiple(): List<Result<PickedMedia>> =
-                suspendCancellableCoroutine { cont ->
-                    continuation = cont::resume
-                    launcher.launch(arrayOf("*/*"))
-                }
+                cont(result)
+            }
         }
-    }
+
+    val delegate =
+        remember(launcher) {
+            object : AndroidFilePickerDelegate {
+                override suspend fun pickMultiple(): List<Result<PickedMedia>> =
+                    suspendCancellableCoroutine { cont ->
+                        continuation = cont::resume
+
+                        cont.invokeOnCancellation {
+                            continuation = null
+                        }
+
+                        launcher.launch(arrayOf("*/*"))
+                    }
+            }
+        }
 
     DisposableEffect(Unit) {
         FilePicker.delegate = delegate

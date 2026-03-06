@@ -5,7 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class TagTest {
-
     @Test
     fun tagCreatedSuccessfullyWithValidName() {
         val tag = Tag("validtag", 5)

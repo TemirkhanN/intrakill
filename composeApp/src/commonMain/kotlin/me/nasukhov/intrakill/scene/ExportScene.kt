@@ -28,14 +28,15 @@ fun ExportScene(component: ExportComponent) {
 
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier
-                .padding(24.dp)
-                .widthIn(max = 400.dp),
+            modifier =
+                Modifier
+                    .padding(24.dp)
+                    .widthIn(max = 400.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             OutlinedTextField(
                 value = state.password,
@@ -43,14 +44,14 @@ fun ExportScene(component: ExportComponent) {
                 label = { Text("Your storage password") },
                 visualTransformation = PasswordVisualTransformation(),
                 enabled = !state.isEnabled,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
 
             if (!state.errors.isEmpty()) {
                 Text(
                     text = state.errors.joinToString("\n"),
                     color = Color.Red,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
 
@@ -58,7 +59,7 @@ fun ExportScene(component: ExportComponent) {
                 Text(
                     text = "Running on ${state.ip}:${state.port}",
                     color = Color.Gray,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
 

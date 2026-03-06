@@ -9,7 +9,10 @@ import me.nasukhov.intrakill.content.MimeTypes
 import me.nasukhov.intrakill.content.Tag
 import me.nasukhov.intrakill.storage.dao.bind
 import me.nasukhov.intrakill.storage.dao.placeholders
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import java.io.File
 import java.sql.DriverManager
 import kotlin.math.min
@@ -34,7 +37,7 @@ class SecureDatabaseTest {
     private val currentTime = Clock.System.now()
 
     private val connection by lazy {
-        DriverManager.getConnection("jdbc:sqlite:${dbName}", null, password)
+        DriverManager.getConnection("jdbc:sqlite:$dbName", null, password)
     }
 
     @BeforeEach
@@ -96,13 +99,14 @@ class SecureDatabaseTest {
         createEntry { it.copy(tags = setOf("tag4", "tag four")) }
         createEntry { it.copy(tags = setOf("tag1", "tag four", "tag-five-05")) }
 
-        val expectedTags = setOf(
-            Tag("tag4", 2),
-            Tag("tag1", 3),
-            Tag("tag one", 2),
-            Tag("tag four", 2),
-            Tag("tag-five-05", 1),
-        )
+        val expectedTags =
+            setOf(
+                Tag("tag4", 2),
+                Tag("tag1", 3),
+                Tag("tag one", 2),
+                Tag("tag four", 2),
+                Tag("tag-five-05", 1),
+            )
 
         val actualTags = db.listTags()
         assertEquals(actualTags.size, actualTags.size)
@@ -130,19 +134,19 @@ class SecureDatabaseTest {
         val allExistingEntries = listOf(entry5, entry4, entry3, entry2, entry1)
 
         mapOf(
-            "case1" to Pair(EntriesFilter(limit=10), allExistingEntries.size),
-            "case2" to Pair(EntriesFilter(limit=10, tags = setOf("tag1")), 2),
-            "case3" to Pair(EntriesFilter(limit=10, tags = setOf("tag1", "tag2")), 1),
-            "case4" to Pair(EntriesFilter(limit=10, tags = setOf("tag3")), 3),
-            "case5" to Pair(EntriesFilter(limit=3), allExistingEntries.size),
-            "case6" to Pair(EntriesFilter(limit=3, tags = setOf("tag1")), 2),
-            "case7" to Pair(EntriesFilter(limit=3, tags = setOf("tag1", "tag2")), 1),
-            "case8" to Pair(EntriesFilter(limit=3, tags = setOf("tag3")), 3),
-            "case9" to Pair(EntriesFilter(limit=3, offset=2), allExistingEntries.size),
-            "case6" to Pair(EntriesFilter(limit=3, offset=2, tags = setOf("tag1")), 2),
-            "case7" to Pair(EntriesFilter(limit=3, offset=2, tags = setOf("tag1", "tag2")), 1),
-            "case8" to Pair(EntriesFilter(limit=3, offset=2, tags = setOf("tag3")), 3),
-            "case10" to Pair(EntriesFilter(limit=10, offset=4), allExistingEntries.size),
+            "case1" to Pair(EntriesFilter(limit = 10), allExistingEntries.size),
+            "case2" to Pair(EntriesFilter(limit = 10, tags = setOf("tag1")), 2),
+            "case3" to Pair(EntriesFilter(limit = 10, tags = setOf("tag1", "tag2")), 1),
+            "case4" to Pair(EntriesFilter(limit = 10, tags = setOf("tag3")), 3),
+            "case5" to Pair(EntriesFilter(limit = 3), allExistingEntries.size),
+            "case6" to Pair(EntriesFilter(limit = 3, tags = setOf("tag1")), 2),
+            "case7" to Pair(EntriesFilter(limit = 3, tags = setOf("tag1", "tag2")), 1),
+            "case8" to Pair(EntriesFilter(limit = 3, tags = setOf("tag3")), 3),
+            "case9" to Pair(EntriesFilter(limit = 3, offset = 2), allExistingEntries.size),
+            "case6" to Pair(EntriesFilter(limit = 3, offset = 2, tags = setOf("tag1")), 2),
+            "case7" to Pair(EntriesFilter(limit = 3, offset = 2, tags = setOf("tag1", "tag2")), 1),
+            "case8" to Pair(EntriesFilter(limit = 3, offset = 2, tags = setOf("tag3")), 3),
+            "case10" to Pair(EntriesFilter(limit = 10, offset = 4), allExistingEntries.size),
         ).forEach {
             val (filter, totalEntriesMatchingFilter) = it.value
             assertEntriesEquals(allExistingEntries.select(filter), db.findEntries(filter), it.key)
@@ -150,7 +154,11 @@ class SecureDatabaseTest {
         }
     }
 
-    private fun assertEntriesEquals(expectedEntries: List<Entry>, actualEntries: List<Entry>, msg: String? = null) {
+    private fun assertEntriesEquals(
+        expectedEntries: List<Entry>,
+        actualEntries: List<Entry>,
+        msg: String? = null,
+    ) {
         assertEquals(expectedEntries.size, actualEntries.size, msg)
 
         expectedEntries.forEachIndexed { index, expectedEntry ->
@@ -160,29 +168,33 @@ class SecureDatabaseTest {
         }
     }
 
-    private fun createEntry(modify: (it: Entry) -> Entry = {it}): Entry {
-        val newEntry = modify(Entry(
-            name = "SomeName",
-            preview = "SomeAttachmentPreview".toByteArray(),
-            attachments = listOf(
-                Attachment(
-                    mimeType = MimeTypes.IMAGE_PNG,
-                    content = Content{ "SomeAttachmentContent".byteInputStream() },
+    private fun createEntry(modify: (it: Entry) -> Entry = { it }): Entry {
+        val newEntry =
+            modify(
+                Entry(
+                    name = "SomeName",
                     preview = "SomeAttachmentPreview".toByteArray(),
-                    size = "SomeAttachmentContent".toByteArray().size.toLong(),
-                    position = 0,
+                    attachments =
+                        listOf(
+                            Attachment(
+                                mimeType = MimeTypes.IMAGE_PNG,
+                                content = Content { "SomeAttachmentContent".byteInputStream() },
+                                preview = "SomeAttachmentPreview".toByteArray(),
+                                size = "SomeAttachmentContent".toByteArray().size.toLong(),
+                                position = 0,
+                            ),
+                            Attachment(
+                                mimeType = MimeTypes.VIDEO_MP4,
+                                content = Content { "AnotherAttachmentContent".byteInputStream() },
+                                preview = "AnotherAttachmentPreview".toByteArray(),
+                                size = "AnotherAttachmentContent".toByteArray().size.toLong(),
+                                position = 1,
+                            ),
+                        ),
+                    tags = setOf("tag1", "tag two", "3rd tag"),
+                    createdAt = currentTime.toLocalDateTime(appTimezone),
                 ),
-                Attachment(
-                    mimeType = MimeTypes.VIDEO_MP4,
-                    content = Content{ "AnotherAttachmentContent".byteInputStream() },
-                    preview = "AnotherAttachmentPreview".toByteArray(),
-                    size = "AnotherAttachmentContent".toByteArray().size.toLong(),
-                    position = 1,
-                ),
-            ),
-            tags = setOf("tag1", "tag two", "3rd tag"),
-            createdAt = currentTime.toLocalDateTime(appTimezone),
-        ))
+            )
 
         return db.saveEntry(newEntry)
     }
@@ -192,7 +204,11 @@ class SecureDatabaseTest {
         assertEntriesAreEqual(entry, storedEntry)
     }
 
-    private fun assertEntriesAreEqual(entry1: Entry, entry2: Entry, msg: String? = null) {
+    private fun assertEntriesAreEqual(
+        entry1: Entry,
+        entry2: Entry,
+        msg: String? = null,
+    ) {
         assertEquals(entry1.id, entry2.id, msg)
         assertEquals(entry1.tags, entry2.tags, msg)
         assertContentEquals(entry1.preview, entry2.preview, msg)
@@ -213,39 +229,49 @@ class SecureDatabaseTest {
         // No entry itself
         connection.prepareStatement("SELECT COUNT(*) FROM entry WHERE id = ?").use { stmt ->
             stmt.setString(1, entry.id)
-            val totalRows = stmt.executeQuery().use { rs ->
-                if (rs.next()) rs.getInt(1) else 0
-            }
+            val totalRows =
+                stmt.executeQuery().use { rs ->
+                    if (rs.next()) rs.getInt(1) else 0
+                }
             assertEquals(0, totalRows)
         }
 
         // No tags
         connection.prepareStatement("SELECT COUNT(*) FROM tags WHERE entry_id = ?").use { stmt ->
             stmt.setString(1, entry.id)
-            val totalRows = stmt.executeQuery().use { rs ->
-                if (rs.next()) rs.getInt(1) else 0
-            }
+            val totalRows =
+                stmt.executeQuery().use { rs ->
+                    if (rs.next()) rs.getInt(1) else 0
+                }
             assertEquals(0, totalRows)
         }
 
         // No attachments
         val attachmentsIds = entry.attachments.map { it.id }
-        connection.prepareStatement("SELECT COUNT(*) FROM attachment WHERE (entry_id = ? OR id IN (${attachmentsIds.placeholders()}))").use { stmt ->
-            stmt.setString(1, entry.id)
-            attachmentsIds.bind(stmt, 2)
-            val totalRows = stmt.executeQuery().use { rs ->
-                if (rs.next()) rs.getInt(1) else 0
+        connection
+            .prepareStatement(
+                "SELECT COUNT(*) FROM attachment WHERE (entry_id = ? OR id IN (${attachmentsIds.placeholders()}))",
+            ).use { stmt ->
+                stmt.setString(1, entry.id)
+                attachmentsIds.bind(stmt, 2)
+                val totalRows =
+                    stmt.executeQuery().use { rs ->
+                        if (rs.next()) rs.getInt(1) else 0
+                    }
+                assertEquals(0, totalRows)
             }
-            assertEquals(0, totalRows)
-        }
 
-        connection.prepareStatement("SELECT COUNT(*) FROM attachment_chunk WHERE attachment_id IN(${attachmentsIds.placeholders()})").use { stmt ->
-            attachmentsIds.bind(stmt)
-            val totalRows = stmt.executeQuery().use { rs ->
-                if (rs.next()) rs.getInt(1) else 0
+        connection
+            .prepareStatement(
+                "SELECT COUNT(*) FROM attachment_chunk WHERE attachment_id IN(${attachmentsIds.placeholders()})",
+            ).use { stmt ->
+                attachmentsIds.bind(stmt)
+                val totalRows =
+                    stmt.executeQuery().use { rs ->
+                        if (rs.next()) rs.getInt(1) else 0
+                    }
+                assertEquals(0, totalRows)
             }
-            assertEquals(0, totalRows)
-        }
     }
 
     private fun deleteDatabase(name: String = dbName) {

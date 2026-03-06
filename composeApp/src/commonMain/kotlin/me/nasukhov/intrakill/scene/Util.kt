@@ -26,15 +26,17 @@ fun InstanceKeeper.coroutineScope(): CoroutineScope {
     return scope
 }
 
-fun <T : Any> Value<T>.asFlow(): Flow<T> = callbackFlow {
-    // Subscribe for changes in Value. Subscriber sends that value into the flow.
-    // It's, technically, intended to be used as a pipeline.
-    val cancellation = subscribe { value ->
-        trySend(value)
-    }
+fun <T : Any> Value<T>.asFlow(): Flow<T> =
+    callbackFlow {
+        // Subscribe for changes in Value. Subscriber sends that value into the flow.
+        // It's, technically, intended to be used as a pipeline.
+        val cancellation =
+            subscribe { value ->
+                trySend(value)
+            }
 
-    // 2. When the Flow is closed/cancelled, we call cancel() on the token
-    awaitClose {
-        cancellation.cancel()
+        // 2. When the Flow is closed/cancelled, we call cancel() on the token
+        awaitClose {
+            cancellation.cancel()
+        }
     }
-}

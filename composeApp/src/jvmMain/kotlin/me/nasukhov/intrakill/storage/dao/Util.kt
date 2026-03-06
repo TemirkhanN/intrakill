@@ -8,7 +8,7 @@ internal fun Collection<*>.placeholders() = joinToString(",") { "?" }
 
 internal fun Collection<String>.bind(
     statement: PreparedStatement,
-    startIndex: Int = 1
+    startIndex: Int = 1,
 ): Int {
     var i = startIndex
     forEach { statement.setString(i++, it) }
@@ -16,6 +16,7 @@ internal fun Collection<String>.bind(
     return i
 }
 
-internal fun ResultSet.getCreatedAt() = LocalDateTime.parse(
-    this.getString("created_at").replace(" ", "T")
-)
+internal fun ResultSet.getCreatedAt() =
+    LocalDateTime.parse(
+        this.getString("created_at").replace(" ", "T"),
+    )

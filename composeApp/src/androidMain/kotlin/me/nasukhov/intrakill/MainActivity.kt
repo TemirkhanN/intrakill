@@ -22,9 +22,10 @@ class MainActivity : ComponentActivity() {
         SecureDatabase.init(this)
         DbFileResolver.init(this)
 
-        val root = retainedComponent{ context ->
-            DefaultRootComponent(componentContext = context)
-        }
+        val root =
+            retainedComponent { context ->
+                DefaultRootComponent(componentContext = context)
+            }
         setContent {
             App(root)
         }

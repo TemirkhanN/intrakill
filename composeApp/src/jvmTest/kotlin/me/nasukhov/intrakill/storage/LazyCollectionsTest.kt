@@ -6,25 +6,27 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class LazyListTest {
-
     @Test
     fun `loader is not called until first access`() {
         var callCount = 0
+
         @Suppress("UNUSED_VARIABLE")
-        val lazyList = LazyList {
-            callCount++
-            listOf("a", "b", "c")
-        }
+        val lazyList =
+            LazyList {
+                callCount++
+                listOf("a", "b", "c")
+            }
         assertEquals(0, callCount)
     }
 
     @Test
     fun `loader is called on first size access`() {
         var callCount = 0
-        val lazyList = LazyList {
-            callCount++
-            listOf("a", "b", "c")
-        }
+        val lazyList =
+            LazyList {
+                callCount++
+                listOf("a", "b", "c")
+            }
         @Suppress("UNUSED_EXPRESSION")
         lazyList.size
         assertEquals(1, callCount)
@@ -33,10 +35,11 @@ class LazyListTest {
     @Test
     fun `loader is called only once across multiple accesses`() {
         var callCount = 0
-        val lazyList = LazyList {
-            callCount++
-            listOf("a", "b", "c")
-        }
+        val lazyList =
+            LazyList {
+                callCount++
+                listOf("a", "b", "c")
+            }
         lazyList.size
         lazyList.size
         lazyList[0]
@@ -73,25 +76,27 @@ class LazyListTest {
 }
 
 class LazySetTest {
-
     @Test
     fun `loader is not called until first access`() {
         var callCount = 0
+
         @Suppress("UNUSED_VARIABLE")
-        val lazySet = LazySet {
-            callCount++
-            setOf("a", "b", "c")
-        }
+        val lazySet =
+            LazySet {
+                callCount++
+                setOf("a", "b", "c")
+            }
         assertEquals(0, callCount)
     }
 
     @Test
     fun `loader is called on first size access`() {
         var callCount = 0
-        val lazySet = LazySet {
-            callCount++
-            setOf("a", "b", "c")
-        }
+        val lazySet =
+            LazySet {
+                callCount++
+                setOf("a", "b", "c")
+            }
         @Suppress("UNUSED_EXPRESSION")
         lazySet.size
         assertEquals(1, callCount)
@@ -100,10 +105,11 @@ class LazySetTest {
     @Test
     fun `loader is called only once across multiple accesses`() {
         var callCount = 0
-        val lazySet = LazySet {
-            callCount++
-            setOf("a", "b", "c")
-        }
+        val lazySet =
+            LazySet {
+                callCount++
+                setOf("a", "b", "c")
+            }
         lazySet.size
         lazySet.size
         lazySet.iterator()
@@ -138,7 +144,6 @@ class LazySetTest {
 }
 
 class AsEnumerationTest {
-
     @Test
     fun `asEnumeration converts non-empty sequence`() {
         val items = listOf(1, 2, 3)

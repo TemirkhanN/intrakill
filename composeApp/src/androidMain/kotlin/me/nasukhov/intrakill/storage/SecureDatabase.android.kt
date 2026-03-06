@@ -1,36 +1,35 @@
 package me.nasukhov.intrakill.storage
 
 import android.content.Context
-import net.sqlcipher.database.SQLiteDatabase
-import net.sqlcipher.database.SQLiteOpenHelper
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
 import me.nasukhov.intrakill.storage.dao.AttachmentRepository
 import me.nasukhov.intrakill.storage.dao.EntryRepository
 import me.nasukhov.intrakill.storage.dao.TagRepository
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SQLiteOpenHelper
 import java.io.File
 import kotlin.use
 
 private class DBHelper(
     val ctx: Context,
     private val migrate: (db: SQLiteDatabase) -> Unit,
-    dbName: String
+    dbName: String,
 ) : SQLiteOpenHelper(ctx, dbName, null, 1) {
-
     override fun onCreate(db: SQLiteDatabase) = Unit
 
     // Downgrade and upgrade are entirely on migrator. We don't rely on the helper here.
     override fun onUpgrade(
         db: SQLiteDatabase,
         oldVersion: Int,
-        newVersion: Int
+        newVersion: Int,
     ) = Unit
 
     // Downgrade and upgrade are entirely on migrator. We don't rely on helper here.
     override fun onDowngrade(
         db: SQLiteDatabase?,
         oldVersion: Int,
-        newVersion: Int
+        newVersion: Int,
     ) = Unit
 
     override fun onOpen(db: SQLiteDatabase) {
@@ -41,7 +40,6 @@ private class DBHelper(
 }
 
 actual object SecureDatabase {
-
     private const val DB_NAME = "secured.db"
 
     private var helper: DBHelper? = null
@@ -79,7 +77,10 @@ actual object SecureDatabase {
         return tempFile
     }
 
-    fun importFromFile(file: File, password: String): Boolean {
+    fun importFromFile(
+        file: File,
+        password: String,
+    ): Boolean {
         val context = helper!!.ctx
         SQLiteDatabase.loadLibs(context)
 
@@ -122,7 +123,6 @@ actual object SecureDatabase {
 
     actual fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
 
-
     actual fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
 
     actual fun deleteById(entryId: String) = entryRepository.delete(entryId)
@@ -130,8 +130,9 @@ actual object SecureDatabase {
     actual fun listTags(): Set<Tag> = tagRepository.listTags()
 }
 
-private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {
-
+private class SQLAdapterAndroid(
+    private val db: SQLiteDatabase,
+) : SQLAdapter {
     override fun exec(sql: String) {
         db.execSQL(sql)
     }
@@ -148,8 +149,8 @@ private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {
         }
     }
 
-    override fun fetchVersion(): Version? {
-        return db.rawQuery("SELECT version FROM application_metadata LIMIT 1", null).use { cursor ->
+    override fun fetchVersion(): Version? =
+        db.rawQuery("SELECT version FROM application_metadata LIMIT 1", null).use { cursor ->
             val versionColumn = cursor.getColumnIndexOrThrow("version")
             if (cursor.moveToFirst()) {
                 Version.fromString(cursor.getString(versionColumn))
@@ -157,5 +158,4 @@ private class SQLAdapterAndroid(private val db: SQLiteDatabase) : SQLAdapter {
                 null
             }
         }
-    }
 }

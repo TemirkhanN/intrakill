@@ -25,53 +25,54 @@ import javax.swing.JFileChooser
 import kotlin.math.min
 
 actual object FilePicker {
-
-    actual suspend fun pickMultiple(): List<Result<PickedMedia>> = withContext(Dispatchers.IO) {
-        val chooser = JFileChooser().apply {
-            isMultiSelectionEnabled = true
-            dialogTitle = "Select photos or videos"
-        }
-
-        if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-            chooser.selectedFiles.mapNotNull { file: File ->
-                try {
-                    val content = Content { file.inputStream() }
-                    val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
-                    Result.success(PickedMedia(
-                        name = file.name,
-                        content = content,
-                        mimeType = mimeType,
-                        size = file.length(),
-                        rawPreview = generatePreviewBytes(file, mimeType)
-                    ))
-                } catch (e: Exception) {
-                    Result.failure(e)
+    actual suspend fun pickMultiple(): List<Result<PickedMedia>> =
+        withContext(Dispatchers.IO) {
+            val chooser =
+                JFileChooser().apply {
+                    isMultiSelectionEnabled = true
+                    dialogTitle = "Select photos or videos"
                 }
+
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                chooser.selectedFiles.mapNotNull { file: File ->
+                    try {
+                        val content = Content { file.inputStream() }
+                        val mimeType = Files.probeContentType(file.toPath()) ?: "application/octet-stream"
+                        Result.success(
+                            PickedMedia(
+                                name = file.name,
+                                content = content,
+                                mimeType = mimeType,
+                                size = file.length(),
+                                rawPreview = generatePreviewBytes(file, mimeType),
+                            ),
+                        )
+                    } catch (e: Exception) {
+                        Result.failure(e)
+                    }
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
         }
-    }
 }
 
 private fun generatePreviewBytes(
     file: File,
-    mimeType: String
+    mimeType: String,
 ): ByteArray =
     when (mimeType.mediaKind()) {
         MediaKind.IMAGE, MediaKind.GIF -> generateImagePreviewSkia(file.readBytes())
         MediaKind.VIDEO -> generateVideoPreview(file)
     }
 
-
-private fun generateImagePreviewSkia(
-    bytes: ByteArray
-): ByteArray {
+private fun generateImagePreviewSkia(bytes: ByteArray): ByteArray {
     val src = Image.makeFromEncoded(bytes)
-    val scale = min(
-        PREVIEW_SIZE.toFloat() / src.width,
-        PREVIEW_SIZE.toFloat() / src.height
-    ).coerceAtMost(1f)
+    val scale =
+        min(
+            PREVIEW_SIZE.toFloat() / src.width,
+            PREVIEW_SIZE.toFloat() / src.height,
+        ).coerceAtMost(1f)
 
     val w = (src.width * scale).toInt()
     val h = (src.height * scale).toInt()
@@ -86,16 +87,17 @@ private fun generateImagePreviewSkia(
         dst = Rect.makeWH(w.toFloat(), h.toFloat()),
         samplingMode = SamplingMode.LINEAR,
         paint = Paint().apply { isAntiAlias = true },
-        strict = true
+        strict = true,
     )
 
-    val encoded = surface.makeImageSnapshot()
-        .encodeToData(EncodedImageFormat.JPEG, 85)
-        ?: error("JPEG encoding failed")
+    val encoded =
+        surface
+            .makeImageSnapshot()
+            .encodeToData(EncodedImageFormat.JPEG, 85)
+            ?: error("JPEG encoding failed")
 
     return encoded.bytes
 }
-
 
 private fun generateVideoPreview(file: File): ByteArray {
     val grabber = FFmpegFrameGrabber(file)
@@ -139,14 +141,15 @@ private fun generateVideoPlaceholder(size: Int = PREVIEW_SIZE): ByteArray {
     g.fillPolygon(
         intArrayOf(size / 3, size / 3, size * 2 / 3),
         intArrayOf(size / 4, size * 3 / 4, size / 2),
-        3
+        3,
     )
 
     g.dispose()
 
-    return ByteArrayOutputStream().also {
-        ImageIO.write(img, "jpg", it)
-    }.toByteArray()
+    return ByteArrayOutputStream()
+        .also {
+            ImageIO.write(img, "jpg", it)
+        }.toByteArray()
 }
 
 @Composable

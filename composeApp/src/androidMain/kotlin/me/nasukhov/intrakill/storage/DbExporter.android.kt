@@ -15,33 +15,38 @@ import me.nasukhov.intrakill.Security
 actual object DbExporter {
     private var server: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
 
-    actual fun start(plainPassword: String, port: Int, onExportStateChange: (ExportProcess) -> Unit): Boolean {
+    actual fun start(
+        plainPassword: String,
+        port: Int,
+        onExportStateChange: (ExportProcess) -> Unit,
+    ): Boolean {
         if (!SecureDatabase.open(plainPassword)) {
             return false
         }
 
         try {
-            server = embeddedServer(CIO, port = port) {
-                routing {
-                    get("/dump") {
-                        val token = call.request.headers[HttpHeaders.Authorization]
+            server =
+                embeddedServer(CIO, port = port) {
+                    routing {
+                        get("/dump") {
+                            val token = call.request.headers[HttpHeaders.Authorization]
 
-                        if (token != null && Security.verify(plainPassword, token)) {
-                            onExportStateChange(ExportProcess.BEGUN)
+                            if (token != null && Security.verify(plainPassword, token)) {
+                                onExportStateChange(ExportProcess.BEGUN)
 
-                            val dbFile = SecureDatabase.dumpDatabase()
-                            try {
-                                call.respondFile(dbFile)
-                            } finally {
-                                dbFile.delete()
-                                onExportStateChange(ExportProcess.END)
+                                val dbFile = SecureDatabase.dumpDatabase()
+                                try {
+                                    call.respondFile(dbFile)
+                                } finally {
+                                    dbFile.delete()
+                                    onExportStateChange(ExportProcess.END)
+                                }
+                            } else {
+                                call.respond(HttpStatusCode.Forbidden)
                             }
-                        } else {
-                            call.respond(HttpStatusCode.Forbidden)
                         }
                     }
-                }
-            }.start(wait = false)
+                }.start(wait = false)
             return true
         } catch (e: Exception) {
             e.printStackTrace()

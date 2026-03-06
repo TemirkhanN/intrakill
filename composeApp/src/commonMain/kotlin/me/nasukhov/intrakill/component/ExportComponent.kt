@@ -37,7 +37,8 @@ interface ExportComponent {
 class DefaultExportComponent(
     context: ComponentContext,
     private val navigate: (Request) -> Unit,
-): ExportComponent, ComponentContext by context {
+) : ExportComponent,
+    ComponentContext by context {
     private data class ExportParams(
         val password: String = "",
         val port: Int = 8080,
@@ -50,10 +51,12 @@ class DefaultExportComponent(
 
     init {
         params.subscribe { newParams ->
-            mutableState.update { it.copy(
-                password = newParams.password,
-                port = newParams.port,
-            ) }
+            mutableState.update {
+                it.copy(
+                    password = newParams.password,
+                    port = newParams.port,
+                )
+            }
         }
 
         context.backHandler.register(BackCallback(onBack = ::close))
@@ -79,18 +82,21 @@ class DefaultExportComponent(
         // Switch state to enabled until exporter confirms it
         mutableState.update { it.copy(errors = emptyList(), isEnabled = true) }
 
-        val enabled = DbExporter.start(current.password, current.port) { exportProcess ->
-            // Basically, hook that switches begin/end state of the export process
-            // Note: this is from exporters perspective. Importer might need some additional time to handle
-            // received instructions. i.e. download file (provided by exporter), then handle it (performed by importer)
-            mutableState.update { it.copy(isInProgress = exportProcess == ExportProcess.BEGUN) }
-        }
+        val enabled =
+            DbExporter.start(current.password, current.port) { exportProcess ->
+                // Basically, hook that switches begin/end state of the export process
+                // Note: this is from exporters perspective. Importer might need some additional time to handle
+                // received instructions. i.e. download file (provided by exporter), then handle it (performed by importer)
+                mutableState.update { it.copy(isInProgress = exportProcess == ExportProcess.BEGUN) }
+            }
 
         if (!enabled) {
-            mutableState.update { it.copy(
-                errors = listOf("Couldn't enable export. Likely, wrong password."),
-                isEnabled = false
-            ) }
+            mutableState.update {
+                it.copy(
+                    errors = listOf("Couldn't enable export. Likely, wrong password."),
+                    isEnabled = false,
+                )
+            }
         }
     }
 

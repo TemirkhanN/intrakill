@@ -17,18 +17,18 @@ fun Paginator(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         TextButton(
             enabled = offset > 0,
-            onClick = { onOffsetChange((offset - maxEntriesPerPage).coerceAtLeast(0)) }
+            onClick = { onOffsetChange((offset - maxEntriesPerPage).coerceAtLeast(0)) },
         ) {
             Text("<")
         }
 
         TextButton(
             enabled = offset + maxEntriesPerPage < total,
-            onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total)) }
+            onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total)) },
         ) {
             Text(">")
         }

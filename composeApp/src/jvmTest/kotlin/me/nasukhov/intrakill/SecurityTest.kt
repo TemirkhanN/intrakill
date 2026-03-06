@@ -7,7 +7,6 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SecurityTest {
-
     @Test
     fun `hash returns non-empty string different from input`() {
         val password = "mypassword"

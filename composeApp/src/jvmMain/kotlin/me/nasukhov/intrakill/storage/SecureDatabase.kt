@@ -11,7 +11,7 @@ import java.sql.DriverManager
 import kotlin.use
 
 actual object SecureDatabase {
-    private var DB_NAME = "secured.db"
+    private var dbName = "secured.db"
         set(value) {
             if (field != value) {
                 connection?.close()
@@ -31,12 +31,15 @@ actual object SecureDatabase {
     private val entryRepository by lazy { EntryRepository(::db, attachmentRepository, tagRepository) }
 
     internal fun switchDb(name: String) {
-        DB_NAME = name
+        dbName = name
     }
 
     fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
 
-    fun importFromFile(file: File, password: String): Boolean {
+    fun importFromFile(
+        file: File,
+        password: String,
+    ): Boolean {
         try {
             // 1. Close the current encrypted connection so we can swap files
             connection?.let {
@@ -46,17 +49,17 @@ actual object SecureDatabase {
             }
 
             // 2. Replace the current DB file with the unencrypted import file
-            val targetFile = File(DB_NAME)
+            val targetFile = File(dbName)
             if (targetFile.exists()) targetFile.delete()
             file.copyTo(targetFile)
 
             // 3. Open the connection to the PLAINTEXT file
             // We use the configuration WITHOUT a key as per Willena's instructions
-            val url = "jdbc:sqlite:${DB_NAME}"
+            val url = "jdbc:sqlite:$dbName"
             DriverManager.getConnection(url).apply {
                 createStatement().use { stmt ->
                     val escapedPass = password.replace("'", "''")
-                    stmt.execute("PRAGMA rekey = '${escapedPass}'")
+                    stmt.execute("PRAGMA rekey = '$escapedPass'")
                 }
                 close()
             }
@@ -72,18 +75,19 @@ actual object SecureDatabase {
         connection = null
 
         return try {
-            val url = "jdbc:sqlite:${DB_NAME}"
-            connection = DriverManager.getConnection(url, null, password).apply {
-                createStatement().use { stmt ->
-                    stmt.execute("PRAGMA cipher_memory_security = ON;")
+            val url = "jdbc:sqlite:$dbName"
+            connection =
+                DriverManager.getConnection(url, null, password).apply {
+                    createStatement().use { stmt ->
+                        stmt.execute("PRAGMA cipher_memory_security = ON;")
 
-                    stmt.execute("PRAGMA foreign_keys = ON;")
-                    // Force key validation
-                    stmt.execute("SELECT count(*) FROM sqlite_master;")
+                        stmt.execute("PRAGMA foreign_keys = ON;")
+                        // Force key validation
+                        stmt.execute("SELECT count(*) FROM sqlite_master;")
+                    }
+
+                    Migrator().migrate(SQLAdapterJVM(this))
                 }
-
-                Migrator().migrate(SQLAdapterJVM(this))
-            }
 
             true
         } catch (e: Exception) {
@@ -116,30 +120,34 @@ private object SqlDumpExporter {
                 stmt.execute("ATTACH DATABASE '$absolutePath' AS plain_db KEY ''")
                 stmt.execute("PRAGMA plain_db.journal_mode = OFF")
 
-                db.createStatement().executeQuery(
-                    "SELECT name, sql FROM main.sqlite_master WHERE type='table' AND name NOT REGEXP '^sqlite_'"
-                ).use { rs ->
-                    while (rs.next()) {
-                        val name = rs.getString("name")
-                        val sql = rs.getString("sql")
+                db
+                    .createStatement()
+                    .executeQuery(
+                        "SELECT name, sql FROM main.sqlite_master WHERE type='table' AND name NOT REGEXP '^sqlite_'",
+                    ).use { rs ->
+                        while (rs.next()) {
+                            val name = rs.getString("name")
+                            val sql = rs.getString("sql")
 
-                        val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+TABLE\\s+(\"?)".toRegex(), "CREATE TABLE plain_db.$1")
-                        stmt.execute(redirectedSql)
-                        stmt.execute("INSERT INTO plain_db.\"$name\" SELECT * FROM main.\"$name\"")
+                            val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+TABLE\\s+(\"?)".toRegex(), "CREATE TABLE plain_db.$1")
+                            stmt.execute(redirectedSql)
+                            stmt.execute("INSERT INTO plain_db.\"$name\" SELECT * FROM main.\"$name\"")
+                        }
                     }
-                }
 
-                db.createStatement().executeQuery(
-                    "SELECT type, sql FROM main.sqlite_master WHERE type IN ('index', 'trigger', 'view') AND name NOT REGEXP '^sqlite_'"
-                ).use { rs ->
-                    while (rs.next()) {
-                        val type = rs.getString("type").uppercase()
-                        val sql = rs.getString("sql")
+                db
+                    .createStatement()
+                    .executeQuery(
+                        "SELECT type, sql FROM main.sqlite_master WHERE type IN ('index', 'trigger', 'view') AND name NOT REGEXP '^sqlite_'",
+                    ).use { rs ->
+                        while (rs.next()) {
+                            val type = rs.getString("type").uppercase()
+                            val sql = rs.getString("sql")
 
-                        val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+$type\\s+(\"?)".toRegex(), "CREATE $type plain_db.$1")
-                        stmt.execute(redirectedSql)
+                            val redirectedSql = sql.replaceFirst("(?i)CREATE\\s+$type\\s+(\"?)".toRegex(), "CREATE $type plain_db.$1")
+                            stmt.execute(redirectedSql)
+                        }
                     }
-                }
 
                 db.commit()
                 stmt.execute("DETACH DATABASE plain_db")
@@ -156,7 +164,9 @@ private object SqlDumpExporter {
     }
 }
 
-private class SQLAdapterJVM(private val connection: Connection): SQLAdapter {
+private class SQLAdapterJVM(
+    private val connection: Connection,
+) : SQLAdapter {
     override fun exec(sql: String) {
         connection.createStatement().use { stmt ->
             stmt.execute(sql)
@@ -176,9 +186,10 @@ private class SQLAdapterJVM(private val connection: Connection): SQLAdapter {
         }
     }
 
-    override fun fetchVersion(): Version? = connection.createStatement().use { stmt ->
-        stmt.executeQuery("SELECT version FROM application_metadata LIMIT 1").use {
-            if (it.next()) Version.fromString(it.getString(1)) else null
+    override fun fetchVersion(): Version? =
+        connection.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT version FROM application_metadata LIMIT 1").use {
+                if (it.next()) Version.fromString(it.getString(1)) else null
+            }
         }
-    }
 }

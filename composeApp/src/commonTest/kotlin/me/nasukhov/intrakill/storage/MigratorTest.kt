@@ -5,12 +5,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MigratorTest {
-
     /**
      * A fake SQLAdapter that tracks executed SQL and simulates version state
      * by interpreting INSERT/UPDATE statements targeting application_metadata.
      */
-    private class FakeSQLAdapter(initialVersion: Version? = null) : SQLAdapter {
+    private class FakeSQLAdapter(
+        initialVersion: Version? = null,
+    ) : SQLAdapter {
         val executedSql = mutableListOf<String>()
         private var version: Version? = initialVersion
 
@@ -60,9 +61,10 @@ class MigratorTest {
     fun migrateAppliesAll4MigrationsOnFreshDatabase() {
         val adapter = FakeSQLAdapter()
         Migrator().migrate(adapter)
-        val updateCount = adapter.executedSql.count {
-            it.startsWith("UPDATE application_metadata SET version =")
-        }
+        val updateCount =
+            adapter.executedSql.count {
+                it.startsWith("UPDATE application_metadata SET version =")
+            }
         assertEquals(4, updateCount)
     }
 
@@ -78,9 +80,10 @@ class MigratorTest {
         val latestVersion = Version(2026, 3, 1, 1, 6)
         val adapter = FakeSQLAdapter(initialVersion = latestVersion)
         Migrator().migrate(adapter)
-        val updateCount = adapter.executedSql.count {
-            it.startsWith("UPDATE application_metadata SET version =")
-        }
+        val updateCount =
+            adapter.executedSql.count {
+                it.startsWith("UPDATE application_metadata SET version =")
+            }
         assertEquals(0, updateCount)
     }
 
@@ -89,9 +92,10 @@ class MigratorTest {
         val afterFirstMigration = Version(2026, 2, 25, 17)
         val adapter = FakeSQLAdapter(initialVersion = afterFirstMigration)
         Migrator().migrate(adapter)
-        val updateCount = adapter.executedSql.count {
-            it.startsWith("UPDATE application_metadata SET version =")
-        }
+        val updateCount =
+            adapter.executedSql.count {
+                it.startsWith("UPDATE application_metadata SET version =")
+            }
         assertEquals(3, updateCount)
     }
 

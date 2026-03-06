@@ -6,7 +6,6 @@ import kotlin.test.assertFails
 import kotlin.test.assertTrue
 
 class VersionTest {
-
     @Test
     fun toStringFormatsVersionWithLeadingZeros() {
         val version = Version(2026, 1, 5, 9, 3)

@@ -16,7 +16,7 @@ data class ImportState(
     val password: String = "",
     val violations: List<String> = emptyList(),
     val isInProgress: Boolean = false,
-    val progress: Int = 0
+    val progress: Int = 0,
 ) {
     init {
         check(progress in 0..100) { "Progress must be in range 0..100" }
@@ -29,16 +29,19 @@ interface ImportComponent {
     val state: Value<ImportState>
 
     fun changeIp(ip: String)
+
     fun changePassword(password: String)
 
     fun close()
+
     fun import()
 }
 
 class DefaultImportComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit
-) : ImportComponent, ComponentContext by context {
+    private val navigate: (Request) -> Unit,
+) : ImportComponent,
+    ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
 
     private val mutableState = MutableValue(ImportState())
@@ -73,27 +76,30 @@ class DefaultImportComponent(
         scope.launch {
             mutableState.update { it.copy(isInProgress = true, violations = violations) }
             val errors = mutableListOf<String>()
-            val success = try {
-                DbImporter.importDatabase(
-                    ip = current.ip,
-                    password = current.password
-                ) { progress ->
-                    if (progress > state.value.progress) {
-                        mutableState.update { it.copy(progress = progress) }
+            val success =
+                try {
+                    DbImporter.importDatabase(
+                        ip = current.ip,
+                        password = current.password,
+                    ) { progress ->
+                        if (progress > state.value.progress) {
+                            mutableState.update { it.copy(progress = progress) }
+                        }
                     }
+                } catch (e: Exception) {
+                    errors += (e.message ?: "Fatal error on import attempt.")
+                    false
                 }
-            } catch (e: Exception) {
-                errors += (e.message ?: "Fatal error on import attempt.")
-                false
-            }
 
             if (success && MediaRepository.unlock(current.password)) {
                 navigate(Request.ListEntries())
             } else {
-                mutableState.update { it.copy(
-                    isInProgress = false,
-                    violations = errors + "Failed to perform import."
-                ) }
+                mutableState.update {
+                    it.copy(
+                        isInProgress = false,
+                        violations = errors + "Failed to perform import.",
+                    )
+                }
             }
         }
     }

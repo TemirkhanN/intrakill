@@ -76,7 +76,10 @@ fun List<Attachment>.moveDownwards(attachment: Attachment): List<Attachment> {
     return swap(from, to)
 }
 
-private fun List<Attachment>.swap(pos1: Int, pos2: Int): List<Attachment> {
+private fun List<Attachment>.swap(
+    pos1: Int,
+    pos2: Int,
+): List<Attachment> {
     require(abs(pos1 - pos2) == 1) {
         "Currently swap is available for neighboring attachments."
     }

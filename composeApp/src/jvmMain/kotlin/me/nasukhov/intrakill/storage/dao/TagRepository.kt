@@ -4,7 +4,9 @@ import me.nasukhov.intrakill.content.Tag
 import java.sql.Connection
 import kotlin.use
 
-class TagRepository(private val dbResolver: () -> Connection) {
+class TagRepository(
+    private val dbResolver: () -> Connection,
+) {
     private val db: Connection
         get() = dbResolver()
 
@@ -54,7 +56,10 @@ class TagRepository(private val dbResolver: () -> Connection) {
         return result
     }
 
-    fun addToEntry(entryId: String, tags: Set<String>) {
+    fun addToEntry(
+        entryId: String,
+        tags: Set<String>,
+    ) {
         if (tags.isEmpty()) return
 
         db.prepareStatement(ADD_ENTRY_TAGS).use { stmt ->
@@ -67,7 +72,10 @@ class TagRepository(private val dbResolver: () -> Connection) {
         }
     }
 
-    fun removeFromEntry(entryId: String, tags: Set<String>) {
+    fun removeFromEntry(
+        entryId: String,
+        tags: Set<String>,
+    ) {
         if (tags.isEmpty()) return
 
         db.prepareStatement(DELETE_ENTRY_TAGS.format(tags.placeholders())).use { stmt ->
