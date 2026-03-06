@@ -15,10 +15,7 @@ class Content {
         this.resolver = resolver
     }
 
-    @Deprecated("Tricky to follow. Try sticking with use() to avoid non-closed resources")
-    fun read(): InputStream = resolver()
-
-    fun use(handler: (InputStream) -> Unit) = resolver().use(handler)
+    fun <R> use(handler: (InputStream) -> R) = resolver().use(handler)
 
     fun readBytes(): ByteArray = resolver().use { it.readBytes() }
 

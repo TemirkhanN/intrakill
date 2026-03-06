@@ -5,17 +5,18 @@ import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.Security
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 
-private data class Request(private val url: URL, private val authToken: String) {
+private data class Request(private val url: URI, private val authToken: String) {
     companion object {
         fun getDbDump(ip: String, port: Int, password: String) = Request(
-            URL("http://$ip:$port/dump"), Security.hash(password)
+            URI("http://$ip:$port/dump"), Security.hash(password)
         )
     }
 
     fun <R> exec(block: HttpURLConnection.() -> R): R {
-        return (url.openConnection() as HttpURLConnection).apply {
+        return (url.toURL().openConnection() as HttpURLConnection).apply {
             connectTimeout = 5000
             readTimeout = 300000
             requestMethod = "GET"

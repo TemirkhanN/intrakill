@@ -74,7 +74,7 @@ private fun Context.generatePreview(content: Content, uri: Uri, mimeType: String
 
 private fun generateImagePreviewAndroid(
     content: Content
-): ByteArray = content.read().use {
+): ByteArray = content.use {
     val maxSize = PickedMedia.PREVIEW_SIZE
     val src = BitmapFactory.decodeStream(it)
 
@@ -97,7 +97,7 @@ private fun generateImagePreviewAndroid(
         paint
     )
 
-    return ByteArrayOutputStream().also { output ->
+    ByteArrayOutputStream().also { output ->
         resized.compress(Bitmap.CompressFormat.JPEG, 85, output)
     }.toByteArray()
 }

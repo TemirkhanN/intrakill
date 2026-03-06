@@ -1,6 +1,5 @@
 package me.nasukhov.intrakill.content
 
-import me.nasukhov.intrakill.content.MimeTypes
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
