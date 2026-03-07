@@ -50,6 +50,7 @@ kotlin {
             implementation(libs.compose.multiplatform.media.player)
             implementation(libs.ktor.server.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.material.icons.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
