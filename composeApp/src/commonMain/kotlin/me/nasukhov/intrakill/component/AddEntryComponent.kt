@@ -14,6 +14,7 @@ import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
 import me.nasukhov.intrakill.content.moveDownwards
 import me.nasukhov.intrakill.content.moveUpwards
+import me.nasukhov.intrakill.content.remove
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.FilePicker
@@ -123,7 +124,7 @@ class DefaultAddEntryComponent(
 
     override fun removeAttachment(attachment: Attachment) {
         mutableState.update {
-            it.copy(attachments = it.attachments - attachment)
+            it.copy(attachments = it.attachments.remove(attachment))
         }
     }
 

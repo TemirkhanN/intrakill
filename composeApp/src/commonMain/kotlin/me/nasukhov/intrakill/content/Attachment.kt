@@ -58,6 +58,14 @@ data class Attachment(
     // TODO position for non persisted entry SELECT IFNULL(MAX(position), -1) + 1 FROM attachment WHERE entry_id = ?)
 }
 
+fun List<Attachment>.remove(element: Attachment): List<Attachment> {
+    return this
+        .filter { it != element }
+        .mapIndexed { index, attachment ->
+            attachment.copy(position = index)
+        }
+}
+
 fun List<Attachment>.moveUpwards(attachment: Attachment): List<Attachment> {
     val from = attachment.position
     if (from == 0) return this

@@ -12,6 +12,7 @@ import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
 import me.nasukhov.intrakill.content.moveDownwards
 import me.nasukhov.intrakill.content.moveUpwards
+import me.nasukhov.intrakill.content.remove
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 
@@ -101,7 +102,7 @@ class DefaultEntryComponent(
             scope.launch {
                 val updatedEntry =
                     MediaRepository.save(
-                        current.entry.copy(attachments = current.entry.attachments.minus(attachment)),
+                        current.entry.copy(attachments = current.entry.attachments.remove(attachment)),
                     )
 
                 mutableState.update { it.copy(entry = updatedEntry) }
