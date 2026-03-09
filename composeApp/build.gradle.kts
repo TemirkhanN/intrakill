@@ -51,6 +51,8 @@ kotlin {
             implementation(libs.ktor.server.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.material.icons.core)
+            implementation(libs.ktor.server.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

@@ -101,6 +101,20 @@ class EntryRepository(
         return result
     }
 
+    fun findMissing(ids: Set<String>): Set<String> {
+        val result = mutableSetOf<String>()
+        db.rawQuery("SELECT id FROM entry WHERE id IN (%s)".format(ids.placeholders()), ids.toTypedArray()).use { c ->
+            val idCol = c.getColumnIndexOrThrow("id")
+
+            while (c.moveToNext()) {
+                val id = c.getString(idCol)
+                result.add(id)
+            }
+        }
+
+        return ids - result
+    }
+
     fun count(filter: EntriesFilter): Int {
         val args = mutableListOf<String>()
 

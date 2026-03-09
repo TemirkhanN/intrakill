@@ -2,28 +2,60 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import me.nasukhov.intrakill.Security
+import me.nasukhov.intrakill.content.Content
+import me.nasukhov.intrakill.content.Entry
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 
-private data class Request(
-    private val url: URI,
-    private val authToken: String,
+private class ApiService(
+    private val source: StorageSource,
+    password: String,
 ) {
-    companion object {
-        fun getDbDump(
-            ip: String,
-            port: Int,
-            password: String,
-        ) = Request(
-            URI("http://$ip:$port/dump"),
-            Security.hash(password),
-        )
-    }
+    private val authToken = Security.hash(password)
 
-    fun <R> exec(block: HttpURLConnection.() -> R): R =
-        (url.toURL().openConnection() as HttpURLConnection)
+    fun <R> getDbDump(block: HttpURLConnection.() -> R): R = request(URI("$source/dump"), block)
+
+    fun <R> listEntriesIds(
+        limit: Int = 100,
+        offset: Int = 0,
+        block: HttpURLConnection.() -> R,
+    ): R = request(URI("$source/entriesIds?limit=$limit&offset=$offset"), block)
+
+    @OptIn(ExperimentalSerializationApi::class)
+    fun getById(id: String): Entry =
+        request(URI("$source/entries/$id")) {
+            check(responseCode == HttpURLConnection.HTTP_OK) {
+                "Error $responseCode occurred while fetching entry $id"
+            }
+            val entry = Json.decodeFromStream<Entry>(inputStream)
+
+            entry.copy(
+                isPersisted = false,
+                attachments = entry.attachments.map { it.copy(content = getAttachmentContent(it.id), isPersisted = false) },
+            )
+        }
+
+    private fun getAttachmentContent(id: String) =
+        Content {
+            request(URI("$source/attachments/$id/content")) {
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    inputStream
+                } else {
+                    throw IllegalStateException("Server returned $responseCode: ${errorStream?.bufferedReader()?.readText()}")
+                }
+            }
+        }
+
+    private fun <R> request(
+        uri: URI,
+        block: HttpURLConnection.() -> R,
+    ): R =
+        (uri.toURL().openConnection() as HttpURLConnection)
             .apply {
                 connectTimeout = 5000
                 readTimeout = 300000
@@ -32,19 +64,19 @@ private data class Request(
             }.block()
 }
 
-actual object DbImporter {
-    private val db = SecureDatabase
+actual object ExternalStorage {
+    private var apiService: ApiService? = null
 
-    actual suspend fun importDatabase(
-        ip: String,
-        port: Int,
+    actual fun resolve(
+        source: StorageSource,
         password: String,
-        onProgress: (Int) -> Unit,
-    ): Boolean =
-        withContext(Dispatchers.IO) {
-            val request = Request.getDbDump(ip, port, password)
+    ) {
+        apiService = ApiService(source, password)
+    }
 
-            request.exec {
+    actual suspend fun downloadDump(onProgress: (Progress) -> Unit): File =
+        withContext(Dispatchers.IO) {
+            apiService!!.getDbDump {
                 when (responseCode) {
                     HttpURLConnection.HTTP_OK -> {
                         val tmpFile = File.createTempFile("intrakill_", "_unencrypted.db").also { it.deleteOnExit() }
@@ -61,14 +93,13 @@ actual object DbImporter {
                                     totalRead += bytesRead
 
                                     if (totalBytes > 0) {
-                                        onProgress(progress(totalRead, totalBytes))
+                                        onProgress(Progress(totalRead, totalBytes))
                                     }
                                 }
                                 output.flush()
                             }
                         }
-
-                        db.importFromFile(tmpFile, password).also { tmpFile.delete() }
+                        tmpFile
                     }
                     HttpURLConnection.HTTP_FORBIDDEN -> {
                         throw IllegalStateException("Import failed: Incorrect password/token rejected by server.")
@@ -80,10 +111,25 @@ actual object DbImporter {
             }
         }
 
-    private fun progress(
-        bytes: Long,
-        outOf: Long,
-    ): Int = ((bytes.toFloat() / outOf) * 100).toInt()
+    @OptIn(ExperimentalSerializationApi::class)
+    actual suspend fun listEntriesIds(
+        offset: Int,
+        limit: Int,
+    ): Set<String> =
+        withContext(Dispatchers.IO) {
+            apiService!!.listEntriesIds(limit, offset) {
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    Json.decodeFromStream(inputStream)
+                } else {
+                    emptySet()
+                }
+            }
+        }
+
+    actual suspend fun getById(id: String): Entry =
+        withContext(Dispatchers.IO) {
+            apiService!!.getById(id)
+        }
 }
 
 // TODO use this instead of interacting with the db directly.

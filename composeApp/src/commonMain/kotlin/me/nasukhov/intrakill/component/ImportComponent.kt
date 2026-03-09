@@ -10,20 +10,17 @@ import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.DbImporter
+import me.nasukhov.intrakill.storage.Progress
+import me.nasukhov.intrakill.storage.StorageSource
 
 data class ImportState(
     val ip: String = "192.168.0.1",
     val password: String = "",
     val violations: List<String> = emptyList(),
     val isInProgress: Boolean = false,
-    val progress: Int = 0,
-) {
-    init {
-        check(progress in 0..100) { "Progress must be in range 0..100" }
-    }
-
-    val progressFloat = progress.toFloat() / 100
-}
+    val progress: Progress = Progress.EMPTY,
+    val isPartialImport: Boolean = false,
+)
 
 interface ImportComponent {
     val state: Value<ImportState>
@@ -35,6 +32,8 @@ interface ImportComponent {
     fun close()
 
     fun import()
+
+    fun sync()
 }
 
 class DefaultImportComponent(
@@ -74,15 +73,15 @@ class DefaultImportComponent(
         }
 
         scope.launch {
-            mutableState.update { it.copy(isInProgress = true, violations = violations) }
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = false, violations = violations) }
             val errors = mutableListOf<String>()
             val success =
                 try {
                     DbImporter.importDatabase(
-                        ip = current.ip,
+                        source = StorageSource(current.ip, 8080),
                         password = current.password,
                     ) { progress ->
-                        if (progress > state.value.progress) {
+                        if (progress != state.value.progress) {
                             mutableState.update { it.copy(progress = progress) }
                         }
                     }
@@ -101,6 +100,34 @@ class DefaultImportComponent(
                     )
                 }
             }
+        }
+    }
+
+    override fun sync() {
+        val current = state.value
+        if (current.isInProgress) return
+
+        val violations = validate(current)
+        if (!violations.isEmpty()) {
+            mutableState.update { it.copy(violations = violations) }
+            return
+        }
+
+        scope.launch {
+            if (!MediaRepository.unlock(current.password)) {
+                mutableState.update { it.copy(isInProgress = false, violations = listOf("Incorrect password")) }
+                return@launch
+            }
+
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = true, violations = violations) }
+
+            DbImporter.syncEntries(
+                StorageSource(current.ip, 8080),
+                password = current.password,
+                onProgress = { newProgress -> mutableState.update { it.copy(progress = newProgress) } },
+            )
+
+            mutableState.update { it.copy(isInProgress = false) }
         }
     }
 

@@ -1,5 +1,7 @@
 package me.nasukhov.intrakill.content
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import me.nasukhov.intrakill.storage.FileSize
 import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.storage.mediaKind
@@ -9,6 +11,10 @@ import java.util.UUID
 import kotlin.math.abs
 
 class Content {
+    companion object {
+        val NONE = Content { "".byteInputStream() }
+    }
+
     private val resolver: () -> InputStream
 
     constructor(resolver: () -> InputStream) {
@@ -40,9 +46,11 @@ object MimeTypes {
     const val VIDEO_MP4 = "video/mp4"
 }
 
+@Serializable
 data class Attachment(
     val mimeType: String,
-    val content: Content,
+    @Transient
+    val content: Content = Content.NONE,
     val preview: ByteArray,
     val size: FileSize,
     var position: Int,
@@ -58,13 +66,12 @@ data class Attachment(
     // TODO position for non persisted entry SELECT IFNULL(MAX(position), -1) + 1 FROM attachment WHERE entry_id = ?)
 }
 
-fun List<Attachment>.remove(element: Attachment): List<Attachment> {
-    return this
+fun List<Attachment>.remove(element: Attachment): List<Attachment> =
+    this
         .filter { it != element }
         .mapIndexed { index, attachment ->
             attachment.copy(position = index)
         }
-}
 
 fun List<Attachment>.moveUpwards(attachment: Attachment): List<Attachment> {
     val from = attachment.position

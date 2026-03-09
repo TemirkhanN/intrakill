@@ -57,7 +57,7 @@ actual object SecureDatabase {
         helper = DBHelper(context, { Migrator().migrate(SQLAdapterAndroid(it)) }, DB_NAME)
     }
 
-    fun dumpDatabase(): File {
+    actual fun dumpDatabase(): File {
         val context = helper!!.ctx
         val db = db!!
         val tempFile = File(context.cacheDir, "temp_unsecured.db")
@@ -77,7 +77,7 @@ actual object SecureDatabase {
         return tempFile
     }
 
-    fun importFromFile(
+    actual fun importFromFile(
         file: File,
         password: String,
     ): Boolean {
@@ -127,7 +127,11 @@ actual object SecureDatabase {
 
     actual fun deleteById(entryId: String) = entryRepository.delete(entryId)
 
+    actual fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
+
     actual fun listTags(): Set<Tag> = tagRepository.listTags()
+
+    actual fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
 }
 
 private class SQLAdapterAndroid(

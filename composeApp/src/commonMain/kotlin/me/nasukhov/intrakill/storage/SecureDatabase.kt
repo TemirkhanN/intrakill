@@ -1,7 +1,9 @@
 package me.nasukhov.intrakill.storage
 
+import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.Tag
+import java.io.File
 import java.util.Enumeration
 
 data class EntriesFilter(
@@ -27,6 +29,17 @@ expect object SecureDatabase {
     fun getById(entryId: String): Entry
 
     fun deleteById(entryId: String)
+
+    fun getAttachmentContent(attachmentId: String): Content
+
+    fun importFromFile(
+        file: File,
+        password: String,
+    ): Boolean
+
+    fun filterMissingIds(fromIds: Set<String>): Set<String>
+
+    fun dumpDatabase(): File
 }
 
 class LazyList<T>(

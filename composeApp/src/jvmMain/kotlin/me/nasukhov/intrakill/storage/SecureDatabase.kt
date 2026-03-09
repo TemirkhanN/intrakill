@@ -34,9 +34,9 @@ actual object SecureDatabase {
         dbName = name
     }
 
-    fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
+    actual fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
 
-    fun importFromFile(
+    actual fun importFromFile(
         file: File,
         password: String,
     ): Boolean {
@@ -105,7 +105,11 @@ actual object SecureDatabase {
 
     actual fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
 
+    actual fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
+
     actual fun listTags(): Set<Tag> = tagRepository.findAll()
+
+    actual fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
 }
 
 private object SqlDumpExporter {

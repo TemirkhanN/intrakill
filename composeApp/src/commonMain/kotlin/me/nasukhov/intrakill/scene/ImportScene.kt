@@ -49,14 +49,30 @@ fun ImportScene(component: ImportComponent) {
             enabled = !state.isInProgress,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (state.isInProgress) {
-                if (state.progress == 0) {
+            if (state.isInProgress && !state.isPartialImport) {
+                if (state.progress.isEmpty()) {
                     LinearProgressIndicator()
                 } else {
-                    LinearProgressIndicator(progress = { state.progressFloat })
+                    LinearProgressIndicator(progress = { state.progress.percent })
                 }
             } else {
                 Text("Import")
+            }
+        }
+
+        Button(
+            onClick = component::sync,
+            enabled = !state.isInProgress,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (state.isInProgress && !state.isPartialImport) {
+                if (state.progress.isEmpty()) {
+                    LinearProgressIndicator()
+                } else {
+                    Text("${state.progress.current}/${state.progress.outOf}")
+                }
+            } else {
+                Text("Sync")
             }
         }
 

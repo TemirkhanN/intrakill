@@ -73,7 +73,7 @@ class AttachmentRepository(
         return result
     }
 
-    private fun getContent(attachmentId: String): Content =
+    fun getContent(attachmentId: String): Content =
         Content {
             val cursor =
                 db.rawQuery(

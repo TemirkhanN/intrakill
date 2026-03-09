@@ -168,6 +168,20 @@ class EntryRepository(
         }
     }
 
+    fun findMissing(ids: Set<String>): Set<String> {
+        val result = mutableSetOf<String>()
+        db.prepareStatement("SELECT id FROM entry WHERE id IN (%s)".format(ids.placeholders())).use { stmt ->
+            ids.bind(stmt)
+            stmt.executeQuery().use { rs ->
+                while (rs.next()) {
+                    result.add(rs.getString("id"))
+                }
+            }
+        }
+
+        return ids - result
+    }
+
     fun findByFilter(filter: EntriesFilter): List<Entry> {
         val result = mutableListOf<Entry>()
 

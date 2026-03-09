@@ -139,7 +139,7 @@ class AttachmentRepository(
         }
     }
 
-    private fun getContent(attachmentId: String): Content =
+    fun getContent(attachmentId: String): Content =
         Content {
             val stmt = db.prepareStatement(FETCH_CONTENT_CHUNKS)
             stmt.setString(1, attachmentId)
