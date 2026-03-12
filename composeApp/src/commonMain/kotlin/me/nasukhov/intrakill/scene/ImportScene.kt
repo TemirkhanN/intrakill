@@ -65,7 +65,7 @@ fun ImportScene(component: ImportComponent) {
             enabled = !state.isInProgress,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            if (state.isInProgress && !state.isPartialImport) {
+            if (state.isInProgress && state.isPartialImport) {
                 if (state.progress.isEmpty()) {
                     LinearProgressIndicator()
                 } else {

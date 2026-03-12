@@ -115,10 +115,9 @@ object DbExporter {
         body: RoutingHandler,
     ): RoutingHandler =
         {
-            val debug = true
             val token = call.request.headers[HttpHeaders.Authorization]
 
-            if (!debug && (token == null || !Security.verify(plainPassword, token))) {
+            if (token == null || !Security.verify(plainPassword, token)) {
                 call.respond(HttpStatusCode.Forbidden)
             } else {
                 this.body()

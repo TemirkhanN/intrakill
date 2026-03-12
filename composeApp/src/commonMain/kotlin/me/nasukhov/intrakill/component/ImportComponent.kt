@@ -121,13 +121,17 @@ class DefaultImportComponent(
 
             mutableState.update { it.copy(isInProgress = true, isPartialImport = true, violations = violations) }
 
-            DbImporter.syncEntries(
-                StorageSource(current.ip, 8080),
-                password = current.password,
-                onProgress = { newProgress -> mutableState.update { it.copy(progress = newProgress) } },
-            )
+            try {
+                DbImporter.syncEntries(
+                    StorageSource(current.ip, 8080),
+                    password = current.password,
+                    onProgress = { newProgress -> mutableState.update { it.copy(progress = newProgress) } },
+                )
 
-            mutableState.update { it.copy(isInProgress = false) }
+                mutableState.update { it.copy(isInProgress = false) }
+            } catch (e: Exception) {
+                mutableState.update { it.copy(isInProgress = false, violations = listOf(e.message ?: "Could not perform sync.")) }
+            }
         }
     }
 

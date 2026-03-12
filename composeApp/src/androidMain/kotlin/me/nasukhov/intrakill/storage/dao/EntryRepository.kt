@@ -30,6 +30,7 @@ class EntryRepository(
                     attachments = LazyList { attachmentRepository.listAttachments(id) },
                     tags = LazySet { tagRepository.listEntryTags(id) },
                     isPersisted = true,
+                    createdAt = c.getCreatedAt(),
                 )
             }
     }
@@ -41,7 +42,7 @@ class EntryRepository(
         val sql =
             if (filter.tags.isEmpty()) {
                 """
-                SELECT id AS entry_id, name, preview 
+                SELECT id AS entry_id, name, preview, created_at
                 FROM entry 
                 ORDER BY created_at DESC 
                 LIMIT ? OFFSET ?
@@ -58,7 +59,8 @@ class EntryRepository(
                 SELECT 
                     e.id AS entry_id, 
                     e.name, 
-                    e.preview
+                    e.preview,
+                    e.created_at
                 FROM entry e
                 WHERE (
                     SELECT COUNT(DISTINCT t.tag)
@@ -93,6 +95,7 @@ class EntryRepository(
                         attachments = LazyList { attachmentRepository.listAttachments(id) },
                         tags = LazySet { tagRepository.listEntryTags(id) },
                         isPersisted = true,
+                        createdAt = c.getCreatedAt(),
                     ),
                 )
             }
@@ -170,8 +173,8 @@ class EntryRepository(
         check(!entry.isPersisted) { "Duplicate entry creation attempt" }
 
         db.execSQL(
-            "INSERT INTO entry(id, name, preview) VALUES(?,?,?)",
-            arrayOf(entry.id, entry.name, entry.preview),
+            "INSERT INTO entry(id, name, preview, created_at) VALUES(?,?,?,?)",
+            arrayOf(entry.id, entry.name, entry.preview, entry.createdAt.toDbFormat()),
         )
 
         attachmentRepository.addToEntry(entry.id, entry.attachments)

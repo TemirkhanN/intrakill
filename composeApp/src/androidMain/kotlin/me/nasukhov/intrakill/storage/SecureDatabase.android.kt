@@ -34,6 +34,7 @@ private class DBHelper(
 
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
+        db.execSQL("PRAGMA foreign_keys=ON;")
 
         migrate(db)
     }

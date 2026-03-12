@@ -91,11 +91,11 @@ object DbImporter {
                 }
             }
 
-            val successfullySynced = 0
+            var successfullySynced = 0
             idsToSync.forEach { id ->
                 try {
-                    val saved = db.saveEntry(apiService.getById(id))
-                    onProgress(Progress(successfullySynced, idsToSync.size))
+                    db.saveEntry(apiService.getById(id))
+                    onProgress(Progress(++successfullySynced, idsToSync.size))
                 } catch (_: Exception) {
                 }
             }
