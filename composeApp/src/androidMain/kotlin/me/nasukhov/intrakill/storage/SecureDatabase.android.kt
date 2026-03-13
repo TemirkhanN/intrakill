@@ -59,9 +59,8 @@ actual object SecureDatabase {
     }
 
     actual fun dumpDatabase(): File {
-        val context = helper!!.ctx
         val db = db!!
-        val tempFile = File(context.cacheDir, "temp_unsecured.db")
+        val tempFile = Filesystem.getTmpFile("plain.db")
         if (tempFile.exists()) tempFile.delete()
 
         val escapedPath = tempFile.absolutePath.replace("'", "''")
@@ -85,20 +84,23 @@ actual object SecureDatabase {
         val context = helper!!.ctx
         SQLiteDatabase.loadLibs(context)
 
-        val dbPath = context.getDatabasePath(DB_NAME)
-        if (dbPath.exists()) dbPath.delete()
-
         val plainDb = SQLiteDatabase.openOrCreateDatabase(file.absolutePath, "", null)
 
         try {
-            val escapedTargetPath = dbPath.absolutePath.replace("'", "''")
+            val newDb = Filesystem.getDbFile("new_${DB_NAME}").also { if (it.exists()) it.delete() }
+            val escapedTargetPath = newDb.absolutePath.replace("'", "''")
             plainDb.execSQL("ATTACH DATABASE '$escapedTargetPath' AS encrypted_db KEY '$password'")
             // extension can not be invoked by execSQL nor query and requires rawExecSQL
             plainDb.rawExecSQL("SELECT sqlcipher_export('encrypted_db')")
             plainDb.execSQL("DETACH DATABASE encrypted_db")
 
-            return dbPath.length() > 0
-        } catch (e: Exception) {
+            return if (newDb.exists() && newDb.length() > 0) {
+                val oldDb = Filesystem.getDbFile(DB_NAME).also { if (it.exists()) it.delete() }
+                newDb.renameTo(oldDb) && open(password)
+            } else {
+                false
+            }
+        } catch (_: Exception) {
             return false
         } finally {
             plainDb.close()
@@ -113,7 +115,7 @@ actual object SecureDatabase {
             SQLiteDatabase.loadLibs(ctx.ctx)
             db = ctx.getWritableDatabase(password)
             true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }

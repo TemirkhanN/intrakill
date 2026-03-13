@@ -5,9 +5,10 @@ import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.content.Entry
 import java.io.File
 
-// TODO rename into FileResolver and adjust usages accordingly
-expect object DbFileResolver {
-    fun resolve(dbName: String): File
+expect object Filesystem {
+    fun getDbFile(dbName: String): File
+
+    fun getTmpFile(prefix: String): File
 }
 
 data class Progress(
@@ -58,7 +59,6 @@ object DbImporter {
         withContext(Dispatchers.IO) {
             ExternalStorage.resolve(source, password)
             val dump = ExternalStorage.downloadDump(onProgress)
-            dump.deleteOnExit()
 
             try {
                 db.importFromFile(dump, password)

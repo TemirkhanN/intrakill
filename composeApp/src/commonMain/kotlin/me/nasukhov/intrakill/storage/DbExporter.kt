@@ -91,6 +91,7 @@ object DbExporter {
                             onExportStateChange(ExportProcess.BEGUN)
                             val dbFile = db.dumpDatabase()
                             try {
+                                // TODO android doesn't respond content length
                                 call.respondFile(dbFile)
                             } finally {
                                 dbFile.delete()

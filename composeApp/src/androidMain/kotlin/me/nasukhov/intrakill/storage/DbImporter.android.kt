@@ -27,7 +27,7 @@ actual object ExternalStorage {
 
     actual suspend fun downloadDump(onProgress: (Progress) -> Unit) =
         withContext(Dispatchers.IO) {
-            val targetFile = File(DbFileResolver.ctx.cacheDir, "unencrypted.db")
+            val targetFile = Filesystem.getTmpFile("plain.db")
 
             val url = URL("$source/dump")
 
@@ -130,17 +130,21 @@ actual object ExternalStorage {
         }
 }
 
-actual object DbFileResolver {
-    lateinit var ctx: Context // TODO
+actual object Filesystem {
+    private lateinit var ctx: Context
 
     fun init(context: Context) {
         ctx = context.applicationContext
     }
 
-    actual fun resolve(dbName: String): File {
+    actual fun getDbFile(dbName: String): File {
+        require(dbName.matches("^[a-zA-Z0-9_]+\\.db$".toRegex())) { "Database name must follow pattern %s.db" }
+
         val file = ctx.getDatabasePath(dbName)
         file.parentFile?.mkdirs()
 
         return file
     }
+
+    actual fun getTmpFile(prefix: String): File = File.createTempFile(prefix, null, ctx.cacheDir).also { it.deleteOnExit() }
 }

@@ -13,8 +13,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import java.io.File
-import java.sql.DriverManager
 import kotlin.math.min
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -28,6 +26,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SecureDatabaseTest {
+    // Careful. Do not accidentally delete dev db by using same value as SecureDatabase.dbName
     private val dbName = "testDatabaseSecured.db"
 
     private val password = "test-password"
@@ -37,7 +36,7 @@ class SecureDatabaseTest {
     private val currentTime = Clock.System.now()
 
     private val connection by lazy {
-        DriverManager.getConnection("jdbc:sqlite:$dbName", null, password)
+        Filesystem.getDbFile(dbName).apply { deleteOnExit() }.openSqliteConnection(password)
     }
 
     @BeforeEach
@@ -275,7 +274,7 @@ class SecureDatabaseTest {
     }
 
     private fun deleteDatabase(name: String = dbName) {
-        File(name).delete()
+        Filesystem.getDbFile(name).delete()
     }
 }
 

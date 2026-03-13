@@ -11,7 +11,7 @@ import java.sql.DriverManager
 import kotlin.use
 
 actual object SecureDatabase {
-    private var dbName = "secured.db"
+    internal var dbName = "secured.db"
         set(value) {
             if (field != value) {
                 connection?.close()
@@ -49,14 +49,16 @@ actual object SecureDatabase {
             }
 
             // 2. Replace the current DB file with the unencrypted import file
-            val targetFile = File(dbName)
-            if (targetFile.exists()) targetFile.delete()
-            file.copyTo(targetFile)
+            val newDb = Filesystem.getDbFile("new_$dbName")
+            if (newDb.exists()) newDb.delete()
+            file.let {
+                it.copyTo(newDb)
+                it.delete()
+            }
 
             // 3. Open the connection to the PLAINTEXT file
             // We use the configuration WITHOUT a key as per Willena's instructions
-            val url = "jdbc:sqlite:$dbName"
-            DriverManager.getConnection(url).apply {
+            newDb.openSqliteConnection().apply {
                 createStatement().use { stmt ->
                     val escapedPass = password.replace("'", "''")
                     stmt.execute("PRAGMA rekey = '$escapedPass'")
@@ -64,8 +66,10 @@ actual object SecureDatabase {
                 close()
             }
 
-            return open(password)
-        } catch (e: Exception) {
+            // TODO check if newDb is valid and working before replacing old db
+            val oldDb = Filesystem.getDbFile(dbName).also { if (it.exists()) it.delete() }
+            return newDb.renameTo(oldDb) && open(password)
+        } catch (_: Exception) {
             return false
         }
     }
@@ -75,9 +79,8 @@ actual object SecureDatabase {
         connection = null
 
         return try {
-            val url = "jdbc:sqlite:$dbName"
             connection =
-                DriverManager.getConnection(url, null, password).apply {
+                Filesystem.getDbFile(dbName).openSqliteConnection(password = password).apply {
                     createStatement().use { stmt ->
                         stmt.execute("PRAGMA cipher_memory_security = ON;")
 
@@ -114,7 +117,7 @@ actual object SecureDatabase {
 
 private object SqlDumpExporter {
     fun exportToPlainDatabase(db: Connection): File {
-        val exportTo = File.createTempFile("intrakill_export_", "storage.db")
+        val exportTo = Filesystem.getTmpFile("export_storage")
 
         try {
             val absolutePath = exportTo.absolutePath.replace("'", "''")
@@ -196,4 +199,13 @@ private class SQLAdapterJVM(
                 if (it.next()) Version.fromString(it.getString(1)) else null
             }
         }
+}
+
+internal fun File.openSqliteConnection(
+    password: String? = null,
+    user: String? = null,
+): Connection {
+    val dbPath = this.absolutePath.replace("\\", "/")
+
+    return DriverManager.getConnection("jdbc:sqlite:$dbPath", user, password)
 }
