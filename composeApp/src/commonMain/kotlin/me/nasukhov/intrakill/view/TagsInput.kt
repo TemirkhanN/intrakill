@@ -47,7 +47,7 @@ fun TagsInput(
             knownTags
                 .asSequence()
                 .map { it.name.lowercase() }
-                .filter { it !in finalizedTags && it.startsWith(currentPrefix) && it != currentPrefix }
+                .filter { it !in finalizedTags && it.startsWith(currentPrefix) }
                 .sortedByDescending { tag -> knownTags.find { it.name.lowercase() == tag }?.frequency ?: 0 }
                 .take(maxSuggestions)
                 .toList()
