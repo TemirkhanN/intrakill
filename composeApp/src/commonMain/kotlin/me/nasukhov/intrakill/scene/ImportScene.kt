@@ -53,7 +53,7 @@ fun ImportScene(component: ImportComponent) {
                 if (state.progress.isEmpty()) {
                     LinearProgressIndicator()
                 } else {
-                    LinearProgressIndicator(progress = { state.progress.percent })
+                    LinearProgressIndicator(progress = { state.progress.percent / 100 })
                 }
             } else {
                 Text("Import")

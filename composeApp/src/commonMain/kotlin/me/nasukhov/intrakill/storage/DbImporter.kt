@@ -15,7 +15,7 @@ data class Progress(
     val current: Long,
     val outOf: Long,
 ) {
-    val percent: Float = if (outOf == 0L) 0f else (current.toFloat() / outOf) * 100
+    val percent: Float = if (outOf == 0L) 0f else ((current.toDouble() / outOf) * 100).toFloat()
 
     init {
         check(current >= 0 && outOf >= 0) { "Progress indicators can not be negative." }

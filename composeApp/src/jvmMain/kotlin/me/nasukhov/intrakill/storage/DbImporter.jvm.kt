@@ -81,7 +81,7 @@ actual object ExternalStorage {
                     HttpURLConnection.HTTP_OK -> {
                         val tmpFile = Filesystem.getTmpFile("plain_db")
 
-                        val totalBytes = contentLength.toLong()
+                        val totalBytes = contentLengthLong
                         inputStream.use { input ->
                             tmpFile.outputStream().use { output ->
                                 val buffer = ByteArray(8192)
