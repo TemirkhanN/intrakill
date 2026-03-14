@@ -28,12 +28,13 @@ Yes, local. I can see no reason to share storage through clouds or with someone 
 
 ### Where is the storage
 
-#### Desktop
-Well, it's a shame, but I just dump it in `composeApp/secured.db` in project root.  
+#### Desktop  
+Under `System.getProperty("user.home")/.Intrakill/databases/secured.db`.  
+On Unix that'd be `~/.Intrakill/databases`, on Windows, I assume, it has to be `c:\Users\%username%\.Intrakill\databases\secured.db`.  
 
 #### Android
 On Android it goes under `context.getDatabasePath("secured.db")`, so it's up to android OS to decide where the file is  
-stored. Basically, it means, file will end up in the system folder designated for our app.  
+stored. Basically, it means, file will end up in the system folder designated for the app.  
 In any case, it's sqlcipher database file, so you have little to nothing to worry about.
 
 
