@@ -29,6 +29,11 @@ object MediaRepository {
             SecureDatabase.open(password)
         }
 
+    suspend fun changePassword(newPassword: String): Boolean =
+        withContext(Dispatchers.IO) {
+            SecureDatabase.changePassword(newPassword)
+        }
+
     suspend fun save(entry: Entry): Entry =
         withContext(Dispatchers.IO) {
             val result = SecureDatabase.saveEntry(entry)

@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
+import me.nasukhov.intrakill.validatePassword
 
 data class LoginState(
     val password: String = "",
@@ -68,9 +69,8 @@ class DefaultLoginComponent(
 
     private fun validate(state: LoginState): List<String> {
         val violations = mutableListOf<String>()
-        if (state.password.length < 6) {
-            violations.add("Password must be at least 6 characters.")
-        }
+
+        violations.addAll(state.password.validatePassword())
 
         return violations
     }

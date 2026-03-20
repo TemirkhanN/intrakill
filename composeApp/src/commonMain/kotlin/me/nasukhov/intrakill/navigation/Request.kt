@@ -7,6 +7,8 @@ sealed interface Request {
 
     data object AddEntry : Request
 
+    data object OpenSettings : Request
+
     data object ImportRequested : Request
 
     data object ExportRequested : Request

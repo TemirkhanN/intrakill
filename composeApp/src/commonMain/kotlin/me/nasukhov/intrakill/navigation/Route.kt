@@ -21,6 +21,9 @@ sealed interface Route {
     data object AddEntry : Route
 
     @Serializable
+    data object OpenSettings : Route
+
+    @Serializable
     data object Import : Route
 
     data object Export : Route

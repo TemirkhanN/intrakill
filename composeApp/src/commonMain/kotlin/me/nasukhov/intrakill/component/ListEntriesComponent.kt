@@ -42,6 +42,8 @@ interface ListEntriesComponent {
     fun onEntryClicked(id: String)
 
     fun onAddClicked()
+
+    fun openSettings()
 }
 
 class DefaultListEntriesComponent(
@@ -122,6 +124,8 @@ class DefaultListEntriesComponent(
     override fun onEntryClicked(id: String) = navigate(Request.ViewEntry(id))
 
     override fun onAddClicked() = navigate(Request.AddEntry)
+
+    override fun openSettings() = navigate(Request.OpenSettings)
 
     private fun refreshKnownTags() {
         scope.launch {

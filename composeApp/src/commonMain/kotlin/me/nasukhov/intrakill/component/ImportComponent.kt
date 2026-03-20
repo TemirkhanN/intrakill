@@ -12,11 +12,13 @@ import me.nasukhov.intrakill.scene.coroutineScope
 import me.nasukhov.intrakill.storage.DbImporter
 import me.nasukhov.intrakill.storage.Progress
 import me.nasukhov.intrakill.storage.StorageSource
+import me.nasukhov.intrakill.validatePassword
+import me.nasukhov.intrakill.view.Notification
 
 data class ImportState(
     val ip: String = "192.168.0.1",
     val password: String = "",
-    val violations: List<String> = emptyList(),
+    val notifications: List<Notification> = emptyList(),
     val isInProgress: Boolean = false,
     val progress: Progress = Progress.EMPTY,
     val isPartialImport: Boolean = false,
@@ -48,18 +50,16 @@ class DefaultImportComponent(
 
     private val localIpPattern = """(127|192)\.\d{1,3}\.\d{1,3}\.\d{1,3}""".toRegex()
 
-    private val minPasswordLength = 6
-
     init {
         context.backHandler.register(BackCallback(onBack = ::close))
     }
 
     override fun changeIp(ip: String) {
-        mutableState.update { it.copy(ip = ip, violations = emptyList()) }
+        mutableState.update { it.copy(ip = ip, notifications = emptyList()) }
     }
 
     override fun changePassword(password: String) {
-        mutableState.update { it.copy(password = password.trim(), violations = emptyList()) }
+        mutableState.update { it.copy(password = password.trim(), notifications = emptyList()) }
     }
 
     override fun import() {
@@ -68,13 +68,13 @@ class DefaultImportComponent(
 
         val violations = validate(current)
         if (!violations.isEmpty()) {
-            mutableState.update { it.copy(violations = violations) }
+            mutableState.update { it.copy(notifications = violations) }
             return
         }
 
         scope.launch {
-            mutableState.update { it.copy(isInProgress = true, isPartialImport = false, violations = violations) }
-            val errors = mutableListOf<String>()
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = false, notifications = violations) }
+            val errors = mutableListOf<Notification>()
             val success =
                 try {
                     DbImporter.importDatabase(
@@ -86,7 +86,7 @@ class DefaultImportComponent(
                         }
                     }
                 } catch (e: Exception) {
-                    errors += (e.message ?: "Fatal error on import attempt.")
+                    errors += Notification.error((e.message ?: "Fatal error on import attempt."))
                     false
                 }
 
@@ -96,7 +96,7 @@ class DefaultImportComponent(
                 mutableState.update {
                     it.copy(
                         isInProgress = false,
-                        violations = errors + "Failed to perform import.",
+                        notifications = errors + Notification.error("Failed to perform import."),
                     )
                 }
             }
@@ -109,17 +109,22 @@ class DefaultImportComponent(
 
         val violations = validate(current)
         if (!violations.isEmpty()) {
-            mutableState.update { it.copy(violations = violations) }
+            mutableState.update { it.copy(notifications = violations) }
             return
         }
 
         scope.launch {
             if (!MediaRepository.unlock(current.password)) {
-                mutableState.update { it.copy(isInProgress = false, violations = listOf("Incorrect password")) }
+                mutableState.update {
+                    it.copy(
+                        isInProgress = false,
+                        notifications = listOf(Notification.error("Incorrect password")),
+                    )
+                }
                 return@launch
             }
 
-            mutableState.update { it.copy(isInProgress = true, isPartialImport = true, violations = violations) }
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = true, notifications = violations) }
 
             try {
                 DbImporter.syncEntries(
@@ -130,7 +135,12 @@ class DefaultImportComponent(
 
                 mutableState.update { it.copy(isInProgress = false) }
             } catch (e: Exception) {
-                mutableState.update { it.copy(isInProgress = false, violations = listOf(e.message ?: "Could not perform sync.")) }
+                mutableState.update {
+                    it.copy(
+                        isInProgress = false,
+                        notifications = listOf(Notification.error(e.message ?: "Could not perform sync.")),
+                    )
+                }
             }
         }
     }
@@ -140,17 +150,15 @@ class DefaultImportComponent(
         navigate(Request.Back)
     }
 
-    private fun validate(state: ImportState): List<String> {
+    private fun validate(state: ImportState): List<Notification> {
         val violations = mutableListOf<String>()
 
         if (!state.ip.matches(localIpPattern)) {
             violations.add("Invalid IP address. Only local IP starting with 127 or 192 is allowed.")
         }
 
-        if (state.password.length < minPasswordLength) {
-            violations.add("Password must be at least $minPasswordLength characters.")
-        }
+        violations.addAll(state.password.validatePassword())
 
-        return violations
+        return violations.map { Notification.error(it) }
     }
 }

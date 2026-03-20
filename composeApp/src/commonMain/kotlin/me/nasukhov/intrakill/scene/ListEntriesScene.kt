@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,8 +78,14 @@ fun ListEntriesScene(component: ListEntriesComponent) {
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = styling.headerVerticalArrangement) {
-                    IconButton(onClick = component::onAddClicked) {
-                        Icon(Icons.Rounded.Add, contentDescription = "Add new")
+                    Row {
+                        IconButton(onClick = component::onAddClicked) {
+                            Icon(Icons.Rounded.Add, contentDescription = "Add new")
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        IconButton(onClick = component::openSettings) {
+                            Icon(Icons.Rounded.Settings, contentDescription = "Open settings")
+                        }
                     }
 
                     TagsInput(

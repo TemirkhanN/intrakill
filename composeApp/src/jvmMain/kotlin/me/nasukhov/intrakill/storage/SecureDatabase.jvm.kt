@@ -98,6 +98,16 @@ actual object SecureDatabase {
         }
     }
 
+    actual fun changePassword(newPassword: String): Boolean =
+        connection?.let {
+            it.createStatement().use { stmt ->
+                val escapedPass = newPassword.replace("'", "''")
+                stmt.execute("PRAGMA rekey = '$escapedPass'")
+            }
+            it.close()
+            open(newPassword)
+        } ?: false
+
     actual fun saveEntry(entry: Entry) = entryRepository.save(entry)
 
     actual fun countEntries(filter: EntriesFilter): Int = entryRepository.countByFilter(filter)

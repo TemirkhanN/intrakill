@@ -120,6 +120,14 @@ actual object SecureDatabase {
         }
     }
 
+    actual fun changePassword(newPassword: String): Boolean =
+        db?.let {
+            val escapedPass = newPassword.replace("'", "''")
+            it.rawExecSQL("PRAGMA rekey = '$escapedPass'")
+            it.close()
+            open(newPassword)
+        } ?: false
+
     actual fun saveEntry(entry: Entry) = entryRepository.save(entry)
 
     actual fun countEntries(filter: EntriesFilter): Int = entryRepository.count(filter)

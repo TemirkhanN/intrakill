@@ -21,6 +21,7 @@ import me.nasukhov.intrakill.scene.ExportScene
 import me.nasukhov.intrakill.scene.ImportScene
 import me.nasukhov.intrakill.scene.ListEntriesScene
 import me.nasukhov.intrakill.scene.LoginScene
+import me.nasukhov.intrakill.scene.SettingsScene
 import me.nasukhov.intrakill.scene.ViewEntryScene
 import me.nasukhov.intrakill.storage.ProvideFilePicker
 
@@ -74,6 +75,7 @@ fun App(root: RootComponent) {
                     is RootComponent.Child.Login -> LoginScene(instance.component)
                     is RootComponent.Child.Import -> ImportScene(instance.component)
                     is RootComponent.Child.Export -> ExportScene(instance.component)
+                    is RootComponent.Child.Settings -> SettingsScene(instance.component)
                 }
             }
         }

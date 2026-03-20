@@ -18,6 +18,8 @@ internal const val MAX_CHUNK_SIZE = 1 * 1024 * 1024
 expect object SecureDatabase {
     fun open(password: String): Boolean
 
+    fun changePassword(newPassword: String): Boolean
+
     fun saveEntry(entry: Entry): Entry
 
     fun findEntries(filter: EntriesFilter): List<Entry>

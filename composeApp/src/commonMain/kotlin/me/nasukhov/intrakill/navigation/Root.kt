@@ -17,11 +17,13 @@ import me.nasukhov.intrakill.component.DefaultExportComponent
 import me.nasukhov.intrakill.component.DefaultImportComponent
 import me.nasukhov.intrakill.component.DefaultListEntriesComponent
 import me.nasukhov.intrakill.component.DefaultLoginComponent
+import me.nasukhov.intrakill.component.DefaultSettingsComponent
 import me.nasukhov.intrakill.component.EntryComponent
 import me.nasukhov.intrakill.component.ExportComponent
 import me.nasukhov.intrakill.component.ImportComponent
 import me.nasukhov.intrakill.component.ListEntriesComponent
 import me.nasukhov.intrakill.component.LoginComponent
+import me.nasukhov.intrakill.component.SettingsComponent
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -49,6 +51,10 @@ interface RootComponent {
 
         class Export(
             val component: ExportComponent,
+        ) : Child()
+
+        class Settings(
+            val component: SettingsComponent,
         ) : Child()
     }
 }
@@ -118,6 +124,19 @@ class DefaultRootComponent(
                         navigate = ::handleAddEntryRequests,
                     ),
                 )
+            is Route.OpenSettings ->
+                RootComponent.Child.Settings(
+                    DefaultSettingsComponent(
+                        context = context,
+                        navigate = ::handleSettingsRequests,
+                    ),
+                )
+        }
+
+    private fun handleSettingsRequests(request: Request) =
+        when (request) {
+            is Request.Back -> navigation.pop()
+            else -> error("The request $request is not supported in this component")
         }
 
     @OptIn(DelicateDecomposeApi::class)
@@ -148,6 +167,7 @@ class DefaultRootComponent(
         when (request) {
             is Request.ViewEntry -> navigation.push(Route.View(request.id))
             is Request.AddEntry -> navigation.push(Route.AddEntry)
+            is Request.OpenSettings -> navigation.push(Route.OpenSettings)
             else -> error("The request $request is not supported in this component")
         }
 
