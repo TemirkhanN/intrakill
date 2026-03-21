@@ -7,7 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import chaintech.videoplayer.host.MediaPlayerHost
-import chaintech.videoplayer.model.ScreenResize
 import chaintech.videoplayer.model.VideoPlayerConfig
 import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import kotlinx.coroutines.Dispatchers
@@ -34,11 +35,13 @@ import java.io.File
 fun VideoPlayer(attachment: Attachment) {
     var isLoaded by remember { mutableStateOf(false) }
 
+    var isVerticalVideo by remember { mutableStateOf(false) }
+
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
-                .aspectRatio(16f / 9),
+                .aspectRatio(if (!isVerticalVideo) 16f / 9 else 9f / 16),
         contentAlignment = Alignment.Center,
     ) {
         Crossfade(
@@ -57,6 +60,9 @@ fun VideoPlayer(attachment: Attachment) {
                             .fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
+                Button(onClick = { isVerticalVideo = !isVerticalVideo }) {
+                    Text(if (isVerticalVideo) "horizontal" else "vertical")
+                }
             }
         }
     }
@@ -103,8 +109,7 @@ private fun RealPlayer(attachment: Attachment) {
                         mediaUrl = file.absolutePath,
                         isMuted = false,
                         autoPlay = true,
-                        isLooping = false,
-                        initialVideoFitMode = ScreenResize.FIT,
+                        isLooping = true,
                     )
                 }
             VideoPlayerComposable(
