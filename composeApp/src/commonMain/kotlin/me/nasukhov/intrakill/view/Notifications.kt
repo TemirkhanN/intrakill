@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.sun.org.apache.xml.internal.serializer.utils.Utils.messages
 
 enum class NotificationType(
     internal val priority: Int,
@@ -29,9 +30,17 @@ data class Notification(
     companion object {
         fun error(message: String) = Notification(message, NotificationType.ERROR)
 
+        fun errors(vararg messages: String) = messages.map(::error)
+
+        fun errors(messages: Collection<String>) = messages.map(::error)
+
         fun warning(message: String) = Notification(message, NotificationType.WARNING)
 
+        fun warnings(vararg messages: String) = messages.map(::warning)
+
         fun info(message: String) = Notification(message, NotificationType.INFO)
+
+        fun infos(vararg messages: String) = messages.map(::info)
     }
 }
 

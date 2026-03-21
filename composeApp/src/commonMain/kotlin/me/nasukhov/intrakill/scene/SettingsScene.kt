@@ -43,6 +43,7 @@ fun SettingsScene(component: SettingsComponent) {
                 value = state.newPassword,
                 onValueChange = component::changePassword,
                 visualTransformation = PasswordVisualTransformation(),
+                enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth(),
             )
 

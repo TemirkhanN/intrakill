@@ -51,23 +51,22 @@ class DefaultSettingsComponent(
             return
         }
 
-        mutableState.update { it.copy(isSaving = true) }
+        mutableState.update {
+            it.copy(isSaving = true, notifications = Notification.warnings("Password is changing. It might take a while"))
+        }
 
-        val violations = mutableListOf<String>()
-
-        violations.addAll(settings.newPassword.validatePassword())
-
-        if (!violations.isEmpty()) {
-            mutableState.update { it.copy(notifications = violations.map(Notification::error), isSaving = false) }
+        val errors = Notification.errors(settings.newPassword.validatePassword())
+        if (!errors.isEmpty()) {
+            mutableState.update { it.copy(notifications = errors, isSaving = false) }
 
             return
         }
 
         scope.launch {
             if (MediaRepository.changePassword(settings.newPassword)) {
-                mutableState.update { it.copy(isSaving = false, notifications = listOf(Notification.info("New settings applied"))) }
+                mutableState.update { it.copy(isSaving = false, notifications = Notification.infos("New settings applied")) }
             } else {
-                mutableState.update { it.copy(isSaving = false, notifications = listOf(Notification.error("Could not save settings"))) }
+                mutableState.update { it.copy(isSaving = false, notifications = Notification.errors("Could not save settings")) }
             }
         }
     }

@@ -73,7 +73,7 @@ class DefaultImportComponent(
         }
 
         scope.launch {
-            mutableState.update { it.copy(isInProgress = true, isPartialImport = false, notifications = violations) }
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = false, notifications = emptyList()) }
             val errors = mutableListOf<Notification>()
             val success =
                 try {
@@ -118,27 +118,36 @@ class DefaultImportComponent(
                 mutableState.update {
                     it.copy(
                         isInProgress = false,
-                        notifications = listOf(Notification.error("Incorrect password")),
+                        notifications = Notification.errors("Incorrect password"),
                     )
                 }
                 return@launch
             }
 
-            mutableState.update { it.copy(isInProgress = true, isPartialImport = true, notifications = violations) }
+            mutableState.update { it.copy(isInProgress = true, isPartialImport = true, notifications = emptyList()) }
 
             try {
+                var totalSynced = 0
                 DbImporter.syncEntries(
                     StorageSource(current.ip, 8080),
                     password = current.password,
-                    onProgress = { newProgress -> mutableState.update { it.copy(progress = newProgress) } },
+                    onProgress = { newProgress ->
+                        mutableState.update { it.copy(progress = newProgress) }
+                        ++totalSynced
+                    },
                 )
 
-                mutableState.update { it.copy(isInProgress = false) }
+                mutableState.update {
+                    it.copy(
+                        isInProgress = false,
+                        notifications = Notification.infos("Synced $totalSynced entries"),
+                    )
+                }
             } catch (e: Exception) {
                 mutableState.update {
                     it.copy(
                         isInProgress = false,
-                        notifications = listOf(Notification.error(e.message ?: "Could not perform sync.")),
+                        notifications = Notification.errors(e.message ?: "Could not perform sync."),
                     )
                 }
             }
@@ -159,6 +168,6 @@ class DefaultImportComponent(
 
         violations.addAll(state.password.validatePassword())
 
-        return violations.map { Notification.error(it) }
+        return Notification.errors(violations)
     }
 }
