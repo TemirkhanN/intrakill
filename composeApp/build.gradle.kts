@@ -115,6 +115,8 @@ compose.desktop {
         mainClass = "me.nasukhov.intrakill.MainKt"
 
         nativeDistributions {
+            modules("java.sql")
+
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "me.nasukhov.intrakill"
             packageVersion = "1.0.0"
