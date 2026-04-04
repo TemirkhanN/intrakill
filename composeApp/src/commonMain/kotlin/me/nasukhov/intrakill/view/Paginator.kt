@@ -3,8 +3,11 @@ package me.nasukhov.intrakill.view
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
@@ -19,18 +22,18 @@ fun Paginator(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
     ) {
-        TextButton(
+        IconButton(
             enabled = offset > 0,
             onClick = { onOffsetChange((offset - maxEntriesPerPage).coerceAtLeast(0)) },
         ) {
-            Text("<")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous results")
         }
 
-        TextButton(
+        IconButton(
             enabled = offset + maxEntriesPerPage < total,
             onClick = { onOffsetChange((offset + maxEntriesPerPage).coerceAtMost(total)) },
         ) {
-            Text(">")
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next results")
         }
     }
 }

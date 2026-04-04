@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.ListEntriesComponent
+import me.nasukhov.intrakill.view.NotFound
 import me.nasukhov.intrakill.view.Paginator
 import me.nasukhov.intrakill.view.TagsInput
 
@@ -68,6 +69,11 @@ fun ListEntriesScene(component: ListEntriesComponent) {
     val searchResult = state.searchResult
 
     Box(modifier = Modifier.fillMaxSize()) {
+        if (isSearching) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            return
+        }
+
         LazyVerticalGrid(
             state = gridState,
             columns = styling.gridCells,
@@ -97,7 +103,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                 }
             }
 
-            if (!isSearching && searchResult !== null) {
+            if (searchResult !== null) {
                 items(searchResult.entries) { entry ->
                     Box(
                         modifier =
@@ -116,18 +122,18 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                 }
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    Paginator(
-                        offset = state.offset,
-                        maxEntriesPerPage = state.entriesPerPage,
-                        total = searchResult.outOfTotal,
-                        onOffsetChange = component::onOffsetChanged,
-                    )
+                    if (searchResult.outOfTotal != 0) {
+                        Paginator(
+                            offset = state.offset,
+                            maxEntriesPerPage = state.entriesPerPage,
+                            total = searchResult.outOfTotal,
+                            onOffsetChange = component::onOffsetChanged,
+                        )
+                    } else {
+                        NotFound()
+                    }
                 }
             }
-        }
-
-        if (state.isSearching) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
     }
 }
