@@ -23,6 +23,7 @@ data class EntryState(
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isWaitingForActionConfirmation: Boolean = false,
 )
 
 interface EntryComponent {
@@ -30,7 +31,11 @@ interface EntryComponent {
 
     fun close()
 
-    fun deleteEntry()
+    fun deleteEntry(forced: Boolean = false)
+
+    fun confirmDelete()
+
+    fun cancelDelete()
 
     fun onTagsChanged(newTags: Set<String>)
 
@@ -75,7 +80,12 @@ class DefaultEntryComponent(
         navigate(Request.Back)
     }
 
-    override fun deleteEntry() {
+    override fun deleteEntry(forced: Boolean) {
+        if (!forced) {
+            mutableState.update { it.copy(isWaitingForActionConfirmation = true) }
+            return
+        }
+
         mutableState.value.let {
             require(it.isEditing && it.entry != null)
             scope.launch {
@@ -83,6 +93,17 @@ class DefaultEntryComponent(
                 navigate(Request.Back)
             }
         }
+    }
+
+    override fun confirmDelete() {
+        state.value.let { current ->
+            require(current.isWaitingForActionConfirmation)
+            deleteEntry(forced = true)
+        }
+    }
+
+    override fun cancelDelete() {
+        mutableState.update { it.copy(isWaitingForActionConfirmation = false) }
     }
 
     override fun onTagsChanged(newTags: Set<String>) {
@@ -97,12 +118,14 @@ class DefaultEntryComponent(
     override fun deleteAttachment(attachment: Attachment) {
         mutableState.value.let { current ->
             require(current.entry != null)
-            require(current.entry.attachments.size > 1) { "Entry must have at least 1 attachment." }
+
+            val modifiedAttachments = current.entry.attachments.remove(attachment)
+            if (modifiedAttachments.isEmpty()) return deleteEntry(forced = true)
 
             scope.launch {
                 val updatedEntry =
                     MediaRepository.save(
-                        current.entry.copy(attachments = current.entry.attachments.remove(attachment)),
+                        current.entry.copy(attachments = modifiedAttachments),
                     )
 
                 mutableState.update { it.copy(entry = updatedEntry) }

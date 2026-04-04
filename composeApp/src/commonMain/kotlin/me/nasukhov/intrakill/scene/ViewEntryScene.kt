@@ -4,13 +4,22 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,12 +28,21 @@ import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.EntryComponent
 import me.nasukhov.intrakill.view.AttachmentView
+import me.nasukhov.intrakill.view.ConfirmationDialog
 import me.nasukhov.intrakill.view.ReturnButton
 import me.nasukhov.intrakill.view.TagsInput
 
 @Composable
 fun ViewEntryScene(component: EntryComponent) {
     val state by component.state.subscribeAsState()
+
+    if (state.isWaitingForActionConfirmation) {
+        ConfirmationDialog(
+            onConfirm = component::confirmDelete,
+            onCancel = component::cancelDelete,
+        )
+        return
+    }
 
     Crossfade(targetState = state.isLoading) { isLoading ->
         val currentEntry = state.entry
@@ -56,13 +74,28 @@ fun ViewEntryScene(component: EntryComponent) {
             ) {
                 item {
                     ReturnButton(component::close)
-                    TextButton(onClick = component::toggleEditMode) {
-                        Text(if (isEditing) "View mode" else "Edit mode")
-                    }
-                    Text(currentEntry.name)
-                    if (isEditing) {
-                        TextButton(onClick = component::deleteEntry) {
-                            Text("Delete entirely")
+
+                    Text(currentEntry.name, style = MaterialTheme.typography.titleLarge)
+                    Spacer(Modifier.padding(8.dp))
+
+                    Row {
+                        IconButton(
+                            onClick = component::toggleEditMode,
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                        ) {
+                            if (isEditing) {
+                                Icon(Icons.Filled.Done, contentDescription = "Switch to view mode")
+                            } else {
+                                Icon(Icons.Default.Edit, contentDescription = "Switch to edit mode")
+                            }
+                        }
+                        if (isEditing) {
+                            IconButton(
+                                onClick = component::deleteEntry,
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            ) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete entirely")
+                            }
                         }
                     }
                 }
@@ -89,15 +122,7 @@ fun ViewEntryScene(component: EntryComponent) {
                         editMode = isEditing,
                         onMoveUp = { component.moveAttachmentUpwards(attachment) },
                         onMoveDown = { component.moveAttachmentDownwards(attachment) },
-                        onDelete = {
-                            if (currentEntry.attachments.size >
-                                1
-                            ) {
-                                component.deleteAttachment(attachment)
-                            } else {
-                                component.deleteEntry()
-                            }
-                        },
+                        onDelete = { component.deleteAttachment(attachment) },
                     )
                 }
 
