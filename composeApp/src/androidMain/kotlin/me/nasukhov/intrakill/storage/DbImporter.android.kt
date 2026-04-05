@@ -40,7 +40,7 @@ actual object ExternalStorage {
 
                 when (responseCode) {
                     HttpURLConnection.HTTP_OK -> {
-                        val totalBytes = contentLength.toLong()
+                        val totalBytes = contentLengthLong
 
                         inputStream.use { input ->
                             targetFile.outputStream().use { output ->
