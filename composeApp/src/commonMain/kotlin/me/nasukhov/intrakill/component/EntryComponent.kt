@@ -15,6 +15,8 @@ import me.nasukhov.intrakill.content.moveUpwards
 import me.nasukhov.intrakill.content.remove
 import me.nasukhov.intrakill.navigation.Request
 import me.nasukhov.intrakill.scene.coroutineScope
+import me.nasukhov.intrakill.storage.FilePicker
+import me.nasukhov.intrakill.view.Notification
 
 data class EntryState(
     val entryId: String,
@@ -24,6 +26,7 @@ data class EntryState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val isWaitingForActionConfirmation: Boolean = false,
+    val notifications: List<Notification> = emptyList(),
 )
 
 interface EntryComponent {
@@ -48,6 +51,8 @@ interface EntryComponent {
     fun moveAttachmentDownwards(attachment: Attachment)
 
     fun changeTags(tags: Set<String>)
+
+    fun promptAttachmentSelection()
 }
 
 class DefaultEntryComponent(
@@ -112,7 +117,7 @@ class DefaultEntryComponent(
 
     override fun toggleEditMode() {
         require(mutableState.value.entry != null)
-        mutableState.update { it.copy(isEditing = !it.isEditing) }
+        mutableState.update { it.copy(isEditing = !it.isEditing, notifications = emptyList()) }
     }
 
     override fun deleteAttachment(attachment: Attachment) {
@@ -171,6 +176,44 @@ class DefaultEntryComponent(
                 val updatedEntry = MediaRepository.save(current.entry.copy(tags = tags))
 
                 mutableState.update { it.copy(entry = updatedEntry) }
+            }
+        }
+    }
+
+    override fun promptAttachmentSelection() {
+        state.value.let { current ->
+            require(current.entry != null)
+
+            scope.launch {
+                val picked = FilePicker.pickMultiple()
+                val newAttachments =
+                    picked.filter { it.isSuccess }.mapIndexed { index, result ->
+                        val it = result.getOrThrow()
+                        Attachment(
+                            mimeType = it.mimeType,
+                            content = it.content,
+                            preview = it.rawPreview,
+                            size = it.size,
+                            position = index,
+                        )
+                    }
+                val violations =
+                    picked.filter { it.isFailure }.map { it.exceptionOrNull()!!.message ?: "Unknown error" }
+
+                if (!newAttachments.isEmpty()) {
+                    val updatedEntry =
+                        MediaRepository.save(
+                            current.entry.copy(attachments = newAttachments + current.entry.attachments),
+                        )
+
+                    mutableState.update { it.copy(entry = updatedEntry, notifications = emptyList()) }
+                } else if (violations.isNotEmpty()) {
+                    mutableState.update {
+                        it.copy(
+                            notifications = Notification.errors(violations),
+                        )
+                    }
+                }
             }
         }
     }

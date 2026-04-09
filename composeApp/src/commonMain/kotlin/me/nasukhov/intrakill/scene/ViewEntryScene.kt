@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +32,7 @@ import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import me.nasukhov.intrakill.component.EntryComponent
 import me.nasukhov.intrakill.view.AttachmentView
 import me.nasukhov.intrakill.view.ConfirmationDialog
+import me.nasukhov.intrakill.view.Notifications
 import me.nasukhov.intrakill.view.ReturnButton
 import me.nasukhov.intrakill.view.TagsInput
 
@@ -108,6 +112,19 @@ fun ViewEntryScene(component: EntryComponent) {
                             onTagsChanged = component::changeTags,
                             isEnabled = !state.isSaving,
                         )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            enabled = !state.isSaving,
+                            onClick = component::promptAttachmentSelection,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Add attachments")
+                        }
+
+                        if (state.notifications.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Notifications(state.notifications)
+                        }
                     } else {
                         TagList(
                             tags = currentEntry.tags,
