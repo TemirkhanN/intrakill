@@ -53,7 +53,7 @@ data class Attachment(
     val content: Content = Content.NONE,
     val preview: ByteArray,
     val size: FileSize,
-    var position: Int,
+    val position: Int,
     val id: String = UUID.randomUUID().toString(),
     val hashsum: ByteArray = hasher.computeHash(content),
     val isPersisted: Boolean = false,
@@ -63,7 +63,6 @@ data class Attachment(
     companion object {
         private val hasher = MessageDigest.getInstance("SHA-256")
     }
-    // TODO position for non persisted entry SELECT IFNULL(MAX(position), -1) + 1 FROM attachment WHERE entry_id = ?)
 }
 
 fun List<Attachment>.remove(element: Attachment): List<Attachment> =
@@ -72,6 +71,11 @@ fun List<Attachment>.remove(element: Attachment): List<Attachment> =
         .mapIndexed { index, attachment ->
             attachment.copy(position = index)
         }
+
+fun List<Attachment>.combine(withList: List<Attachment>): List<Attachment> =
+    (this + withList).mapIndexed { index, attachment ->
+        attachment.copy(position = index)
+    }
 
 fun List<Attachment>.moveUpwards(attachment: Attachment): List<Attachment> {
     val from = attachment.position
@@ -102,11 +106,8 @@ private fun List<Attachment>.swap(
     val newList = this.toMutableList()
 
     val elem1 = newList[pos1]
-    val elem2 = newList[pos2]
-    newList[pos1] = elem2
-    elem1.position = pos2
-    newList[pos2] = elem1
-    newList[pos1].position = pos1
+    newList[pos1] = newList[pos2].copy(position = pos1)
+    newList[pos2] = elem1.copy(position = pos2)
 
     return newList
 }

@@ -10,6 +10,7 @@ import me.nasukhov.intrakill.content.Attachment
 import me.nasukhov.intrakill.content.Entry
 import me.nasukhov.intrakill.content.MediaRepository
 import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.content.combine
 import me.nasukhov.intrakill.content.moveDownwards
 import me.nasukhov.intrakill.content.moveUpwards
 import me.nasukhov.intrakill.content.remove
@@ -203,7 +204,7 @@ class DefaultEntryComponent(
                 if (!newAttachments.isEmpty()) {
                     val updatedEntry =
                         MediaRepository.save(
-                            current.entry.copy(attachments = newAttachments + current.entry.attachments),
+                            current.entry.copy(attachments = current.entry.attachments.combine(newAttachments)),
                         )
 
                     mutableState.update { it.copy(entry = updatedEntry, notifications = emptyList()) }

@@ -74,9 +74,9 @@ class AttachmentMoveTest {
 
         val result = list.moveUpwards(a1)
 
-        assertEquals(a1, result[0])
-        assertEquals(a0, result[1])
-        assertEquals(a2, result[2])
+        assertEquals(a1.id, result[0].id)
+        assertEquals(a0.id, result[1].id)
+        assertEquals(a2.id, result[2].id)
         assertEquals(0, result[0].position)
         assertEquals(1, result[1].position)
         assertEquals(2, result[2].position)
@@ -112,9 +112,9 @@ class AttachmentMoveTest {
 
         val result = list.moveDownwards(a1)
 
-        assertEquals(a0, result[0])
-        assertEquals(a2, result[1])
-        assertEquals(a1, result[2])
+        assertEquals(a0.id, result[0].id)
+        assertEquals(a2.id, result[1].id)
+        assertEquals(a1.id, result[2].id)
         assertEquals(1, result[1].position)
         assertEquals(2, result[2].position)
     }
@@ -143,6 +143,33 @@ class AttachmentMoveTest {
         val a0 = attachment(0)
         val list = listOf(a0)
         assertSame(list, list.moveDownwards(a0))
+    }
+
+    @Test
+    fun `combine adjusts positions correctly`() {
+        val a0 = attachment(0)
+        val a1 = attachment(1)
+        val a2 = attachment(2)
+        val list1 = listOf(a0, a1, a2)
+        val a3 = attachment(0)
+        val a4 = attachment(1)
+        val a5 = attachment(2)
+        val list2 = listOf(a3, a4, a5)
+
+        val result = list1.combine(list2)
+
+        assertEquals(a0.id, result[0].id)
+        assertEquals(a1.id, result[1].id)
+        assertEquals(a2.id, result[2].id)
+        assertEquals(a3.id, result[3].id)
+        assertEquals(a4.id, result[4].id)
+        assertEquals(a5.id, result[5].id)
+        assertEquals(0, result[0].position)
+        assertEquals(1, result[1].position)
+        assertEquals(2, result[2].position)
+        assertEquals(3, result[3].position)
+        assertEquals(4, result[4].position)
+        assertEquals(5, result[5].position)
     }
 }
 
