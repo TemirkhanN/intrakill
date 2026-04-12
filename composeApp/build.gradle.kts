@@ -15,7 +15,7 @@ plugins {
 kotlin {
     androidTarget {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 
@@ -33,6 +33,7 @@ kotlin {
             implementation(libs.androidx.sqlite.framework)
             implementation(libs.android.database.sqlcipher)
             implementation(libs.ktor.server.android)
+            implementation(libs.coil.gif)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -53,6 +54,7 @@ kotlin {
             implementation(libs.material.icons.core)
             implementation(libs.ktor.server.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.coil.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

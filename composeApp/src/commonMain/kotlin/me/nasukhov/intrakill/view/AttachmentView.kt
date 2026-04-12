@@ -1,13 +1,11 @@
 package me.nasukhov.intrakill.view
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,8 +19,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import me.nasukhov.intrakill.content.Attachment
-import me.nasukhov.intrakill.scene.asImageBitmap
 import me.nasukhov.intrakill.storage.MediaKind
 
 @Composable
@@ -38,25 +36,14 @@ fun AttachmentView(
         contentAlignment = Alignment.Center,
     ) {
         when (attachment.mediaKind) {
-            MediaKind.IMAGE -> {
-                Image(
-                    bitmap = attachment.content.readBytes().asImageBitmap(),
+            MediaKind.IMAGE, MediaKind.GIF ->
+                AsyncImage(
+                    model = attachment.content.readBytes(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth(),
                     contentScale = ContentScale.FillWidth,
                 )
-            }
-            MediaKind.VIDEO -> {
-                VideoPlayer(attachment)
-            }
-            else -> {
-                Box(
-                    modifier = Modifier.aspectRatio(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("Attachment is not supported.", color = Color.Gray)
-                }
-            }
+            MediaKind.VIDEO -> VideoPlayer(attachment)
         }
 
         if (editMode) {
