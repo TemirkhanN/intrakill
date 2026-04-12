@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.view
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,7 +37,14 @@ fun AttachmentView(
         contentAlignment = Alignment.Center,
     ) {
         when (attachment.mediaKind) {
-            MediaKind.IMAGE, MediaKind.GIF ->
+            MediaKind.IMAGE ->
+                Image(
+                    bitmap = attachment.imageBitmap,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.FillWidth,
+                )
+            MediaKind.GIF ->
                 AsyncImage(
                     model = attachment.content.readBytes(),
                     contentDescription = null,

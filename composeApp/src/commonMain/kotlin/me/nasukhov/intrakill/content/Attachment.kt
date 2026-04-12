@@ -1,7 +1,9 @@
 package me.nasukhov.intrakill.content
 
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.nasukhov.intrakill.scene.asImageBitmap
 import me.nasukhov.intrakill.storage.FileSize
 import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.storage.mediaKind
@@ -17,13 +19,15 @@ class Content {
 
     private val resolver: () -> InputStream
 
+    private var byteCache: ByteArray? = null
+
     constructor(resolver: () -> InputStream) {
         this.resolver = resolver
     }
 
     fun <R> use(handler: (InputStream) -> R) = resolver().use(handler)
 
-    fun readBytes(): ByteArray = resolver().use { it.readBytes() }
+    fun readBytes(): ByteArray = byteCache ?: resolver().use { it.readBytes() }.also { byteCache = it }
 
     fun calculateSize(): Long =
         resolver().use { input ->
@@ -58,6 +62,11 @@ data class Attachment(
     val hashsum: ByteArray = hasher.computeHash(content),
     val isPersisted: Boolean = false,
 ) {
+    val imageBitmap: ImageBitmap by lazy {
+        check(mediaKind == MediaKind.IMAGE)
+        content.readBytes().asImageBitmap()
+    }
+
     val mediaKind: MediaKind = mimeType.mediaKind()
 
     companion object {
