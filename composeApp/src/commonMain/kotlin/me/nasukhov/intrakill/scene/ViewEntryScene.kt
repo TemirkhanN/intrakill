@@ -42,10 +42,10 @@ fun ViewEntryScene(component: EntryComponent) {
 
     if (state.isWaitingForActionConfirmation) {
         ConfirmationDialog(
+            text = "Delete entirely?",
             onConfirm = component::confirmDelete,
             onCancel = component::cancelDelete,
         )
-        return
     }
 
     Crossfade(targetState = state.isLoading) { isLoading ->

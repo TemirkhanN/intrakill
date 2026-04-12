@@ -1,21 +1,31 @@
 package me.nasukhov.intrakill.view
-
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 
 @Composable
 fun ConfirmationDialog(
+    text: String,
     onCancel: () -> Unit,
     onConfirm: () -> Unit,
 ) = AlertDialog(
     onDismissRequest = onCancel,
-    title = { Text("Confirm Action") },
-    text = { Text("Are you sure you want to proceed?") },
+    title = {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.error,
+        )
+    },
     confirmButton = {
-        TextButton(onClick = onConfirm) {
-            Text("Yes")
+        Button(
+            onClick = onConfirm,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+        ) {
+            Text("Yes", color = MaterialTheme.colorScheme.primary)
         }
     },
     dismissButton = {
