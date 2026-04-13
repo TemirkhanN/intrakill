@@ -1,7 +1,6 @@
 package me.nasukhov.intrakill.storage
 
 import androidx.compose.runtime.Composable
-import me.nasukhov.intrakill.content.Content
 
 typealias FileSize = Long
 

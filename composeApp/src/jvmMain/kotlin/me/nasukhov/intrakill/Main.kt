@@ -10,7 +10,7 @@ import androidx.compose.ui.window.rememberWindowState
 import chaintech.videoplayer.util.LocalWindowState
 import com.arkivanov.decompose.DefaultComponentContext
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
-import me.nasukhov.intrakill.navigation.DefaultRootComponent
+import me.nasukhov.intrakill.ui.root.DefaultRootComponent
 
 @Suppress("ktlint:standard:function-naming")
 fun main() =

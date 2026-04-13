@@ -1,8 +1,8 @@
 package me.nasukhov.intrakill.storage.dao
 
 import kotlinx.datetime.toJavaLocalDateTime
-import me.nasukhov.intrakill.content.Attachment
-import me.nasukhov.intrakill.content.Entry
+import me.nasukhov.intrakill.domain.model.Attachment
+import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.storage.LazyList
 import me.nasukhov.intrakill.storage.LazySet

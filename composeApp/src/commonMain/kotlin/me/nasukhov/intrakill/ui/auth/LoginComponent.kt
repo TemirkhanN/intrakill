@@ -1,0 +1,77 @@
+package me.nasukhov.intrakill.ui.auth
+
+import com.arkivanov.decompose.ComponentContext
+import com.arkivanov.decompose.value.MutableValue
+import com.arkivanov.decompose.value.Value
+import com.arkivanov.decompose.value.update
+import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.domain.repository.MediaRepository
+import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.ui.root.Request
+import me.nasukhov.intrakill.validatePassword
+
+data class LoginState(
+    val password: String = "",
+    val isLoggingIn: Boolean = false,
+    val violations: List<String> = emptyList(),
+)
+
+interface LoginComponent {
+    val state: Value<LoginState>
+
+    fun onPasswordChanged(newValue: String)
+
+    fun onUnlockClicked()
+
+    fun onImportClicked()
+
+    fun onExportClicked()
+}
+
+class DefaultLoginComponent(
+    context: ComponentContext,
+    private val navigate: (Request) -> Unit,
+) : LoginComponent,
+    ComponentContext by context {
+    private val scope = instanceKeeper.coroutineScope()
+    private val mutableState = MutableValue(LoginState())
+    override val state: Value<LoginState> = mutableState
+
+    override fun onPasswordChanged(newValue: String) {
+        mutableState.update { it.copy(password = newValue, violations = emptyList()) }
+    }
+
+    override fun onUnlockClicked() {
+        val current = state.value
+        if (current.isLoggingIn) {
+            return
+        }
+
+        val violations = validate(current)
+        if (!violations.isEmpty()) {
+            mutableState.update { it.copy(violations = violations, isLoggingIn = false) }
+            return
+        }
+
+        scope.launch {
+            mutableState.update { it.copy(isLoggingIn = true, violations = violations) }
+            if (MediaRepository.unlock(current.password)) {
+                navigate(Request.ListEntries())
+            } else {
+                mutableState.update { it.copy(violations = violations + "Incorrect password.", isLoggingIn = false) }
+            }
+        }
+    }
+
+    override fun onImportClicked() = navigate(Request.ImportRequested)
+
+    override fun onExportClicked() = navigate(Request.ExportRequested)
+
+    private fun validate(state: LoginState): List<String> {
+        val violations = mutableListOf<String>()
+
+        violations.addAll(state.password.validatePassword())
+
+        return violations
+    }
+}

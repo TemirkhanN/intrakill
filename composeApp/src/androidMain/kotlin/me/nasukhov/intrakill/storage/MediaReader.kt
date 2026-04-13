@@ -11,7 +11,6 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
-import me.nasukhov.intrakill.content.Content
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
 

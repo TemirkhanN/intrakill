@@ -1,8 +1,8 @@
 package me.nasukhov.intrakill.storage
 
 import android.content.Context
-import me.nasukhov.intrakill.content.Entry
-import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.domain.model.Entry
+import me.nasukhov.intrakill.domain.model.Tag
 import me.nasukhov.intrakill.storage.dao.AttachmentRepository
 import me.nasukhov.intrakill.storage.dao.EntryRepository
 import me.nasukhov.intrakill.storage.dao.TagRepository

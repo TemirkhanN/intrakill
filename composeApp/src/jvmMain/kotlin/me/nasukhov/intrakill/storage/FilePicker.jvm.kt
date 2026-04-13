@@ -3,7 +3,6 @@ package me.nasukhov.intrakill.storage
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.nasukhov.intrakill.content.Content
 import me.nasukhov.intrakill.storage.PickedMedia.Companion.PREVIEW_SIZE
 import me.nasukhov.intrakill.storage.PickedMedia.Companion.VIDEO_PREVIEW_FRAME_AT_X_SECOND
 import org.bytedeco.javacv.FFmpegFrameGrabber

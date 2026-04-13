@@ -9,9 +9,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.arkivanov.decompose.DefaultComponentContext
 import com.arkivanov.decompose.retainedComponent
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
-import me.nasukhov.intrakill.navigation.DefaultRootComponent
 import me.nasukhov.intrakill.storage.Filesystem
 import me.nasukhov.intrakill.storage.SecureDatabase
+import me.nasukhov.intrakill.ui.root.DefaultRootComponent
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,6 +1,6 @@
 package me.nasukhov.intrakill.storage.dao
 
-import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.domain.model.Tag
 import net.sqlcipher.database.SQLiteDatabase
 import kotlin.use
 

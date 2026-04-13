@@ -1,7 +1,7 @@
 package me.nasukhov.intrakill.storage.dao
 
-import me.nasukhov.intrakill.content.Attachment
-import me.nasukhov.intrakill.content.Content
+import me.nasukhov.intrakill.domain.model.Attachment
+import me.nasukhov.intrakill.storage.Content
 import me.nasukhov.intrakill.storage.MAX_CHUNK_SIZE
 import me.nasukhov.intrakill.storage.asEnumeration
 import java.io.FilterInputStream

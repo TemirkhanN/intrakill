@@ -15,15 +15,15 @@ import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import kotlinx.datetime.TimeZone
-import me.nasukhov.intrakill.navigation.RootComponent
-import me.nasukhov.intrakill.scene.AddEntryScene
-import me.nasukhov.intrakill.scene.ExportScene
-import me.nasukhov.intrakill.scene.ImportScene
-import me.nasukhov.intrakill.scene.ListEntriesScene
-import me.nasukhov.intrakill.scene.LoginScene
-import me.nasukhov.intrakill.scene.SettingsScene
-import me.nasukhov.intrakill.scene.ViewEntryScene
 import me.nasukhov.intrakill.storage.ProvideFilePicker
+import me.nasukhov.intrakill.ui.auth.LoginScene
+import me.nasukhov.intrakill.ui.datasync.ExportScene
+import me.nasukhov.intrakill.ui.datasync.ImportScene
+import me.nasukhov.intrakill.ui.entries.AddEntryScene
+import me.nasukhov.intrakill.ui.entries.ListEntriesScene
+import me.nasukhov.intrakill.ui.entries.ViewEntryScene
+import me.nasukhov.intrakill.ui.root.RootComponent
+import me.nasukhov.intrakill.ui.settings.SettingsScene
 
 val appTimezone = TimeZone.UTC
 

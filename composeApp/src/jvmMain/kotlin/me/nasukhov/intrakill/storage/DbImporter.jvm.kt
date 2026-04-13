@@ -6,8 +6,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import me.nasukhov.intrakill.Security
-import me.nasukhov.intrakill.content.Content
-import me.nasukhov.intrakill.content.Entry
+import me.nasukhov.intrakill.domain.model.Entry
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI

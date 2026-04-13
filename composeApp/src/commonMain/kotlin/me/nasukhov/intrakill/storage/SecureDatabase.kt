@@ -1,8 +1,7 @@
 package me.nasukhov.intrakill.storage
 
-import me.nasukhov.intrakill.content.Content
-import me.nasukhov.intrakill.content.Entry
-import me.nasukhov.intrakill.content.Tag
+import me.nasukhov.intrakill.domain.model.Entry
+import me.nasukhov.intrakill.domain.model.Tag
 import java.io.File
 import java.util.Enumeration
 

@@ -2,7 +2,7 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.nasukhov.intrakill.content.Entry
+import me.nasukhov.intrakill.domain.model.Entry
 import java.io.File
 
 expect object Filesystem {
