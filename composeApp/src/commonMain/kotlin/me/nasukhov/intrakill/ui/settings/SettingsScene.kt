@@ -39,7 +39,7 @@ fun SettingsScene(component: SettingsComponent) {
         ) {
             OutlinedTextField(
                 label = { Text("New password") },
-                value = state.newPassword,
+                value = state.newPassword.value,
                 onValueChange = component::changePassword,
                 visualTransformation = PasswordVisualTransformation(),
                 enabled = !state.isSaving,

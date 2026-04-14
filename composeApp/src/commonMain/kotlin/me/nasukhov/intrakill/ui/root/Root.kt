@@ -23,6 +23,7 @@ import me.nasukhov.intrakill.ui.entries.DefaultEntryComponent
 import me.nasukhov.intrakill.ui.entries.DefaultListEntriesComponent
 import me.nasukhov.intrakill.ui.entries.EntryComponent
 import me.nasukhov.intrakill.ui.entries.ListEntriesComponent
+import me.nasukhov.intrakill.ui.settings.AppSettings
 import me.nasukhov.intrakill.ui.settings.DefaultSettingsComponent
 import me.nasukhov.intrakill.ui.settings.SettingsComponent
 
@@ -129,6 +130,7 @@ class DefaultRootComponent(
                 RootComponent.Child.Settings(
                     DefaultSettingsComponent(
                         context = context,
+                        settings = AppSettings(),
                         navigate = ::handleSettingsRequests,
                     ),
                 )

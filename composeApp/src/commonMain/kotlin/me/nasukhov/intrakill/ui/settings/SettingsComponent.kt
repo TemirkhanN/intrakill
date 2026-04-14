@@ -11,8 +11,17 @@ import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.validatePassword
 
+data class Setting<T>(
+    val value: T,
+    val isApplied: Boolean = false,
+) {
+    companion object {
+        fun <T> applied(value: T) = Setting(value = value, isApplied = true)
+    }
+}
+
 data class AppSettings(
-    val newPassword: String = "",
+    val newPassword: Setting<String> = Setting.applied(""),
     val notifications: List<Notification> = emptyList(),
     val isSaving: Boolean = false,
 )
@@ -29,15 +38,16 @@ interface SettingsComponent {
 
 class DefaultSettingsComponent(
     context: ComponentContext,
+    settings: AppSettings,
     private val navigate: (Request) -> Unit,
 ) : SettingsComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
-    private val mutableState = MutableValue(AppSettings())
+    private val mutableState = MutableValue(settings)
     override val state: Value<AppSettings> = mutableState
 
     override fun changePassword(password: String) {
-        mutableState.update { it.copy(newPassword = password) }
+        mutableState.update { it.copy(newPassword = Setting(password)) }
     }
 
     override fun save() {
@@ -46,8 +56,12 @@ class DefaultSettingsComponent(
             return
         }
 
+        val newPassword = settings.newPassword.value
         // There is only one setting there. If it's not present, no need to do anything
-        if (settings.newPassword.isBlank()) {
+        if (settings.newPassword.isApplied) {
+            return
+        }
+        if (newPassword.isBlank()) {
             return
         }
 
@@ -55,7 +69,7 @@ class DefaultSettingsComponent(
             it.copy(isSaving = true, notifications = Notification.warnings("Password is changing. It might take a while"))
         }
 
-        val errors = Notification.errors(settings.newPassword.validatePassword())
+        val errors = Notification.errors(newPassword.validatePassword())
         if (!errors.isEmpty()) {
             mutableState.update { it.copy(notifications = errors, isSaving = false) }
 
@@ -63,7 +77,7 @@ class DefaultSettingsComponent(
         }
 
         scope.launch {
-            if (MediaRepository.changePassword(settings.newPassword)) {
+            if (MediaRepository.changePassword(newPassword)) {
                 mutableState.update { it.copy(isSaving = false, notifications = Notification.infos("New settings applied")) }
             } else {
                 mutableState.update { it.copy(isSaving = false, notifications = Notification.errors("Could not save settings")) }
