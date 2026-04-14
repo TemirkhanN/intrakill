@@ -126,7 +126,12 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                             offset = state.offset,
                             maxEntriesPerPage = state.entriesPerPage,
                             total = searchResult.outOfTotal,
-                            onOffsetChange = component::onOffsetChanged,
+                            onOffsetChange = { newOffset ->
+                                val searchResultItemGridPosition = 1
+                                gridState.requestScrollToItem(searchResultItemGridPosition)
+
+                                component.onOffsetChanged(newOffset)
+                            },
                         )
                     } else {
                         NotFound()
