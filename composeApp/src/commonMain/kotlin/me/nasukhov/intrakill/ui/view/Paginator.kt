@@ -20,7 +20,7 @@ fun Paginator(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.End,
     ) {
         IconButton(
             enabled = offset > 0,
