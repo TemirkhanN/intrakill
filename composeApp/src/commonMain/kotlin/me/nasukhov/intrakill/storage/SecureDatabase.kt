@@ -9,7 +9,12 @@ data class EntriesFilter(
     val limit: Int,
     val offset: Int = 0,
     val tags: Set<String> = emptySet(),
-)
+) {
+    init {
+        check(limit > 0)
+        check(offset >= 0)
+    }
+}
 
 // Chunk size in application_chunk.data column is no more than this value across all devices.
 internal const val MAX_CHUNK_SIZE = 1 * 1024 * 1024

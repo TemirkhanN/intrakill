@@ -9,8 +9,6 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.domain.model.Tag
 import me.nasukhov.intrakill.domain.repository.EntriesSearchResult
@@ -21,17 +19,10 @@ import me.nasukhov.intrakill.ui.root.Request
 import kotlin.math.max
 
 data class ListState(
-    val filteredByTags: Set<String> = emptySet(),
-    val offset: Int = 0,
-    val entriesPerPage: Int = 12,
+    val filter: EntriesFilter = EntriesFilter(limit = 12, offset = 0),
     val searchResult: EntriesSearchResult? = null,
     val isSearching: Boolean = false,
-) {
-    init {
-        check(entriesPerPage > 0)
-        check(offset >= 0)
-    }
-}
+)
 
 interface ListEntriesComponent {
     val state: Value<ListState>
@@ -50,64 +41,35 @@ interface ListEntriesComponent {
 
 class DefaultListEntriesComponent(
     context: ComponentContext,
-    filterByTags: Set<String> = emptySet(),
+    filter: EntriesFilter,
     private val navigate: (Request) -> Unit,
 ) : ListEntriesComponent,
     ComponentContext by context {
-    private data class FilterParams(
-        val tags: Set<String> = emptySet(),
-        val offset: Int = 0,
-        val limit: Int = 12,
-    )
-
     override val knownTags = MutableValue<Set<Tag>>(emptySet())
 
-    private val mutableState = MutableValue(ListState(filteredByTags = filterByTags))
+    private val mutableState = MutableValue(ListState())
     override val state: Value<ListState> = mutableState
-
-    private val filters = MutableValue(FilterParams(tags = filterByTags))
 
     private val scope = instanceKeeper.coroutineScope()
 
     init {
         scope.launch {
-            merge(
-                filters.asFlow().map { it to false },
-                MediaRepository.updates.map { filters.value to true },
-            ).collectLatest { (filter, isStorageUpdated) ->
-                mutableState.update {
-                    it.copy(
-                        isSearching = true,
-                        filteredByTags = filter.tags,
-                        offset = filter.offset,
-                    )
-                }
+            refreshKnownTags()
+            applyFilter(filter)
 
-                val result =
-                    MediaRepository.findEntries(
-                        EntriesFilter(limit = filter.limit, offset = filter.offset, tags = filter.tags),
-                    )
-
-                mutableState.update {
-                    it.copy(
-                        searchResult = result,
-                        isSearching = false,
-                    )
-                }
-                if (isStorageUpdated) {
-                    refreshKnownTags()
-                }
+            // Everytime something changes in the storage, we have to refresh the search result
+            MediaRepository.updates.collectLatest {
+                refreshKnownTags()
+                applyFilter(state.value.filter)
             }
         }
 
-        refreshKnownTags()
-
         context.backHandler.register(
             BackCallback(onBack = {
-                state.value.let {
+                state.value.filter.let {
                     // Unless we're already on the very first page, move backwards.
                     if (it.offset != 0) {
-                        val previousPageOffset = max(it.offset - it.entriesPerPage, 0)
+                        val previousPageOffset = max(it.offset - it.limit, 0)
                         onOffsetChanged(previousPageOffset)
                     }
                 }
@@ -116,11 +78,15 @@ class DefaultListEntriesComponent(
     }
 
     override fun onTagsChanged(tags: Set<String>) {
-        filters.update { it.copy(tags = tags, offset = 0) }
+        val newFilter = state.value.filter.copy(tags = tags, offset = 0)
+
+        scope.launch { applyFilter(newFilter) }
     }
 
     override fun onOffsetChanged(offset: Int) {
-        filters.update { it.copy(offset = offset) }
+        val newFilter = state.value.filter.copy(offset = offset)
+
+        scope.launch { applyFilter(newFilter) }
     }
 
     override fun onEntryClicked(id: String) = navigate(Request.ViewEntry(id))
@@ -129,14 +95,31 @@ class DefaultListEntriesComponent(
 
     override fun openSettings() = navigate(Request.OpenSettings)
 
-    private fun refreshKnownTags() {
-        scope.launch {
-            val allTags = MediaRepository.listTags()
-            knownTags.update { allTags }
+    private suspend fun refreshKnownTags() {
+        val allTags = MediaRepository.listTags()
+        knownTags.update { allTags }
+    }
+
+    private suspend fun applyFilter(newFilter: EntriesFilter) {
+        mutableState.update {
+            it.copy(
+                filter = newFilter,
+                isSearching = true,
+            )
+        }
+
+        val result = MediaRepository.findEntries(newFilter)
+
+        mutableState.update {
+            it.copy(
+                searchResult = result,
+                isSearching = false,
+            )
         }
     }
 }
 
+// Keep for reference. I find this to be useful under particular circumstances between Flow and Decompose
 private fun <T : Any> Value<T>.asFlow(): Flow<T> =
     callbackFlow {
         // Subscribe for changes in Value. Subscriber sends that value into the flow.

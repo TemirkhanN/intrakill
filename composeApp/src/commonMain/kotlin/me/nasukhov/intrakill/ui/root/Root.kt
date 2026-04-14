@@ -10,6 +10,7 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
+import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.ui.auth.DefaultLoginComponent
 import me.nasukhov.intrakill.ui.auth.LoginComponent
 import me.nasukhov.intrakill.ui.datasync.DefaultExportComponent
@@ -105,7 +106,7 @@ class DefaultRootComponent(
                     DefaultListEntriesComponent(
                         context = context,
                         navigate = ::handleContentListRequests,
-                        filterByTags = route.filterByTags,
+                        filter = EntriesFilter(route.limit, route.offset, route.filterByTags),
                     ),
                 )
             is Route.View -> {

@@ -96,7 +96,7 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                     TagsInput(
                         knownTags = knownTags,
                         onTagsChanged = component::onTagsChanged,
-                        selectedTags = state.filteredByTags,
+                        selectedTags = state.filter.tags,
                         maxSuggestions = 8,
                     )
                 }
@@ -123,8 +123,8 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     if (searchResult.outOfTotal != 0) {
                         Paginator(
-                            offset = state.offset,
-                            maxEntriesPerPage = state.entriesPerPage,
+                            offset = state.filter.offset,
+                            maxEntriesPerPage = state.filter.limit,
                             total = searchResult.outOfTotal,
                             onOffsetChange = { newOffset ->
                                 val searchResultItemGridPosition = 1
