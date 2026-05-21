@@ -46,6 +46,10 @@ expect object SecureDatabase {
     fun filterMissingIds(fromIds: Set<String>): Set<String>
 
     fun dumpDatabase(): File
+
+    fun updateSettings(settings: Map<String, String>)
+
+    fun getSettings(): Map<String, String>
 }
 
 class LazyList<T>(

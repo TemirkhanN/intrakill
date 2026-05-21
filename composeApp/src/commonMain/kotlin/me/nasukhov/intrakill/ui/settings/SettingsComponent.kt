@@ -5,23 +5,17 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.domain.model.AppSetting
+import me.nasukhov.intrakill.domain.model.Settings
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.validatePassword
 
-data class Setting<T>(
-    val value: T,
-    val isApplied: Boolean = false,
-) {
-    companion object {
-        fun <T> applied(value: T) = Setting(value = value, isApplied = true)
-    }
-}
-
 data class AppSettings(
-    val newPassword: Setting<String> = Setting.applied(""),
+    val entriesPerPage: AppSetting<Int>,
+    val password: AppSetting<String>,
     val notifications: List<Notification> = emptyList(),
     val isSaving: Boolean = false,
 )
@@ -31,6 +25,8 @@ interface SettingsComponent {
 
     fun changePassword(password: String)
 
+    fun changeEntriesPerPage(value: Int)
+
     fun save()
 
     fun close()
@@ -38,16 +34,33 @@ interface SettingsComponent {
 
 class DefaultSettingsComponent(
     context: ComponentContext,
-    settings: AppSettings,
     private val navigate: (Request) -> Unit,
 ) : SettingsComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
-    private val mutableState = MutableValue(settings)
+    private val mutableState =
+        MutableValue(
+            AppSettings(
+                entriesPerPage = Settings.entriesPerPage,
+                password = AppSetting.applied(""),
+            ),
+        )
+
     override val state: Value<AppSettings> = mutableState
 
     override fun changePassword(password: String) {
-        mutableState.update { it.copy(newPassword = Setting(password)) }
+        mutableState.update { it.copy(password = AppSetting(password)) }
+    }
+
+    override fun changeEntriesPerPage(value: Int) {
+        if (mutableState.value.entriesPerPage.value == value) {
+            return
+        }
+
+        // Sanity check
+        check(value in 1..100)
+
+        mutableState.update { it.copy(entriesPerPage = AppSetting(value)) }
     }
 
     override fun save() {
@@ -56,9 +69,26 @@ class DefaultSettingsComponent(
             return
         }
 
-        val newPassword = settings.newPassword.value
-        // There is only one setting there. If it's not present, no need to do anything
-        if (settings.newPassword.isApplied) {
+        val notifications = mutableListOf<Notification>()
+
+        Settings.setEntriesPerPage(settings.entriesPerPage.value)
+        if (Settings.haveChanged()) {
+            mutableState.update { it.copy(isSaving = true, notifications = notifications) }
+            Settings.save()
+            notifications.add(Notification.info("New settings applied"))
+
+            // Mark settings as applied
+            mutableState.update {
+                it.copy(
+                    isSaving = false,
+                    entriesPerPage = it.entriesPerPage.copy(isApplied = true),
+                    notifications = notifications,
+                )
+            }
+        }
+
+        val newPassword = settings.password.value
+        if (settings.password.isApplied) {
             return
         }
         if (newPassword.isBlank()) {
@@ -78,7 +108,14 @@ class DefaultSettingsComponent(
 
         scope.launch {
             if (MediaRepository.changePassword(newPassword)) {
-                mutableState.update { it.copy(isSaving = false, notifications = Notification.infos("New settings applied")) }
+                notifications.add(Notification.info("New password is set"))
+                mutableState.update {
+                    it.copy(
+                        isSaving = false,
+                        notifications = notifications,
+                        password = it.password.copy(isApplied = true),
+                    )
+                }
             } else {
                 mutableState.update { it.copy(isSaving = false, notifications = Notification.errors("Could not save settings")) }
             }

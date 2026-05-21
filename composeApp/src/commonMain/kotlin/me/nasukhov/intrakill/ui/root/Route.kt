@@ -10,7 +10,6 @@ sealed interface Route {
     @Serializable
     data class List(
         val filterByTags: Set<String> = emptySet(),
-        val limit: Int = 12,
         val offset: Int = 0,
     ) : Route
 

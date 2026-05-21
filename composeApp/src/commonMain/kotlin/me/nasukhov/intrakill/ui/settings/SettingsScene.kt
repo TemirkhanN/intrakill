@@ -39,11 +39,19 @@ fun SettingsScene(component: SettingsComponent) {
         ) {
             OutlinedTextField(
                 label = { Text("New password") },
-                value = state.newPassword.value,
+                value = state.password.value,
                 onValueChange = component::changePassword,
                 visualTransformation = PasswordVisualTransformation(),
                 enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth(),
+            )
+            // TODO must options not be in the component?
+            EntriesPerPageSelector(
+                availableOptions = listOf("6", "10", "12", "15", "18", "20"),
+                selected = component.state.value.entriesPerPage.value
+                    .toString(),
+                modifier = Modifier.fillMaxWidth(),
+                onSelect = { component.changeEntriesPerPage(it.toInt()) },
             )
 
             Notifications(state.notifications)

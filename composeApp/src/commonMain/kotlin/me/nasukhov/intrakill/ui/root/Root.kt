@@ -10,7 +10,7 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
-import me.nasukhov.intrakill.storage.EntriesFilter
+import me.nasukhov.intrakill.domain.model.Settings
 import me.nasukhov.intrakill.ui.auth.DefaultLoginComponent
 import me.nasukhov.intrakill.ui.auth.LoginComponent
 import me.nasukhov.intrakill.ui.datasync.DefaultExportComponent
@@ -23,7 +23,6 @@ import me.nasukhov.intrakill.ui.entries.DefaultEntryComponent
 import me.nasukhov.intrakill.ui.entries.DefaultListEntriesComponent
 import me.nasukhov.intrakill.ui.entries.EntryComponent
 import me.nasukhov.intrakill.ui.entries.ListEntriesComponent
-import me.nasukhov.intrakill.ui.settings.AppSettings
 import me.nasukhov.intrakill.ui.settings.DefaultSettingsComponent
 import me.nasukhov.intrakill.ui.settings.SettingsComponent
 
@@ -107,7 +106,7 @@ class DefaultRootComponent(
                     DefaultListEntriesComponent(
                         context = context,
                         navigate = ::handleContentListRequests,
-                        filter = EntriesFilter(route.limit, route.offset, route.filterByTags),
+                        config = route,
                     ),
                 )
             is Route.View -> {
@@ -126,14 +125,14 @@ class DefaultRootComponent(
                         navigate = ::handleAddEntryRequests,
                     ),
                 )
-            is Route.OpenSettings ->
+            is Route.OpenSettings -> {
                 RootComponent.Child.Settings(
                     DefaultSettingsComponent(
                         context = context,
-                        settings = AppSettings(),
                         navigate = ::handleSettingsRequests,
                     ),
                 )
+            }
         }
 
     private fun handleSettingsRequests(request: Request) =

@@ -77,6 +77,26 @@ actual object SecureDatabase {
         return tempFile
     }
 
+    actual fun updateSettings(settings: Map<String, String>) {
+        settings.forEach { (name, value) ->
+            conn.execSQL(
+                "INSERT INTO settings(name, value) VALUES(?, ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+                arrayOf(name, value),
+            )
+        }
+    }
+
+    actual fun getSettings(): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        conn.rawQuery("SELECT `name`, `value` FROM settings", null).use { c ->
+            while (c.moveToNext()) {
+                result[c.getString(0)] = c.getString(1)
+            }
+        }
+
+        return result
+    }
+
     actual fun importFromFile(
         file: File,
         password: String,

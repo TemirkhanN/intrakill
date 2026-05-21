@@ -36,6 +36,35 @@ actual object SecureDatabase {
 
     actual fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
 
+    actual fun updateSettings(settings: Map<String, String>) {
+        db
+            .prepareStatement(
+                "INSERT INTO settings(`name`, `value`) VALUES(?, ?) " +
+                    "ON CONFLICT(`name`) " +
+                    "DO UPDATE SET `value` = ?",
+            ).use { stmt ->
+                settings.forEach { (name, value) ->
+                    stmt.setString(1, name)
+                    stmt.setString(2, value)
+                    stmt.setString(3, value)
+                    stmt.addBatch()
+                }
+                stmt.executeBatch()
+            }
+    }
+
+    actual fun getSettings(): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        db.prepareStatement("SELECT `name`, `value` FROM settings").use { stmt ->
+            val rs = stmt.executeQuery()
+            while (rs.next()) {
+                result[rs.getString("name")] = rs.getString("value")
+            }
+        }
+
+        return result
+    }
+
     actual fun importFromFile(
         file: File,
         password: String,

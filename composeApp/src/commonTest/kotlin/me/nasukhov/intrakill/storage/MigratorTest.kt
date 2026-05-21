@@ -59,13 +59,15 @@ class MigratorTest {
 
     @Test
     fun migrateAppliesAll4MigrationsOnFreshDatabase() {
+        val migrator = Migrator()
+
         val adapter = FakeSQLAdapter()
-        Migrator().migrate(adapter)
+        migrator.migrate(adapter)
         val updateCount =
             adapter.executedSql.count {
                 it.startsWith("UPDATE application_metadata SET version =")
             }
-        assertEquals(4, updateCount)
+        assertEquals(migrator.versions.size, updateCount)
     }
 
     @Test
@@ -77,9 +79,11 @@ class MigratorTest {
 
     @Test
     fun migrateSkipsAllMigrationsWhenAlreadyAtLatestVersion() {
-        val latestVersion = Version(2026, 3, 1, 1, 6)
+        val migrator = Migrator()
+
+        val latestVersion = migrator.versions.last()
         val adapter = FakeSQLAdapter(initialVersion = latestVersion)
-        Migrator().migrate(adapter)
+        migrator.migrate(adapter)
         val updateCount =
             adapter.executedSql.count {
                 it.startsWith("UPDATE application_metadata SET version =")
@@ -89,14 +93,16 @@ class MigratorTest {
 
     @Test
     fun migrateSkipsAppliedMigrationsButRunsNewerOnes() {
+        val migrator = Migrator()
+
         val afterFirstMigration = Version(2026, 2, 25, 17)
         val adapter = FakeSQLAdapter(initialVersion = afterFirstMigration)
-        Migrator().migrate(adapter)
+        migrator.migrate(adapter)
         val updateCount =
             adapter.executedSql.count {
                 it.startsWith("UPDATE application_metadata SET version =")
             }
-        assertEquals(3, updateCount)
+        assertEquals(migrator.versions.size - 1, updateCount)
     }
 
     @Test

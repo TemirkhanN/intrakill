@@ -63,7 +63,10 @@ internal class Migrator {
             MigrationAddContentSizeInAttachments(),
             MigrationSplitAttachmentContentIntoChunks(),
             MigrationAddAttachmentPosition(),
+            MigrationApplicationSettings(),
         ).sortedBy { it.version }
+
+    val versions = migrations.map { it.version }
 
     init {
         check(migrations.size == migrations.associateBy { it.version }.size) {
@@ -273,5 +276,20 @@ private class MigrationAddAttachmentPosition : Migration {
         )
 
         adapter.exec("DROP TABLE tmp_attachment_ordering")
+    }
+}
+
+private class MigrationApplicationSettings : Migration {
+    override val version: Version = Version(2026, 4, 13, 23, 55)
+
+    override fun execute(adapter: SQLAdapter) {
+        adapter.exec(
+            """
+            CREATE TABLE settings (
+                  `name` TEXT PRIMARY KEY CHECK(length(`name`) <= 255),
+                  `value` TEXT NOT NULL CHECK(length(`value`) <= 255)
+              );
+            """.trimIndent(),
+        )
     }
 }

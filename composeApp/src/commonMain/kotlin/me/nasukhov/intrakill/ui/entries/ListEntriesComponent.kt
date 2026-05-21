@@ -9,13 +9,16 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.domain.model.Settings
 import me.nasukhov.intrakill.domain.model.Tag
 import me.nasukhov.intrakill.domain.repository.EntriesSearchResult
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
 import me.nasukhov.intrakill.ui.root.Request
+import me.nasukhov.intrakill.ui.root.Route
 import kotlin.math.max
 
 data class ListState(
@@ -41,7 +44,7 @@ interface ListEntriesComponent {
 
 class DefaultListEntriesComponent(
     context: ComponentContext,
-    filter: EntriesFilter,
+    config: Route.List, // TODO feels odd
     private val navigate: (Request) -> Unit,
 ) : ListEntriesComponent,
     ComponentContext by context {
@@ -55,12 +58,24 @@ class DefaultListEntriesComponent(
     init {
         scope.launch {
             refreshKnownTags()
+            val filter =
+                EntriesFilter(
+                    offset = config.offset,
+                    tags = config.filterByTags,
+                    limit = Settings.entriesPerPage.value,
+                )
             applyFilter(filter)
 
-            // Everytime something changes in the storage, we have to refresh the search result
-            MediaRepository.updates.collectLatest {
-                refreshKnownTags()
-                applyFilter(state.value.filter)
+            // Everytime something changes in
+            // the storage (add/remove entries)
+            // OR the config (change amount of per page items or other UI features)
+            // we have to refresh the search result
+            merge(
+                MediaRepository.updates,
+                Settings.updates,
+            ).collectLatest {
+                val newFilter = state.value.filter.copy(limit = Settings.entriesPerPage.value)
+                applyFilter(newFilter)
             }
         }
 
