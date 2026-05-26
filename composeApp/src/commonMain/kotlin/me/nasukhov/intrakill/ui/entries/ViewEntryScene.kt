@@ -1,6 +1,7 @@
 package me.nasukhov.intrakill.ui.entries
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,9 +27,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import kotlinx.coroutines.launch
@@ -40,6 +45,8 @@ import me.nasukhov.intrakill.ui.view.ScrollUpButton
 @Composable
 fun ViewEntryScene(component: EntryComponent) {
     val state by component.state.subscribeAsState()
+
+    var fullscreenContent by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
 
     if (state.isWaitingForActionConfirmation) {
         ConfirmationDialog(
@@ -134,6 +141,7 @@ fun ViewEntryScene(component: EntryComponent) {
                         TagList(
                             tags = currentEntry.tags,
                             onTagsChanged = component::onTagsChanged,
+                            initiallyVisible = 5,
                         )
                     }
                 }
@@ -145,6 +153,8 @@ fun ViewEntryScene(component: EntryComponent) {
                         onMoveUp = { component.moveAttachmentUpwards(attachment) },
                         onMoveDown = { component.moveAttachmentDownwards(attachment) },
                         onDelete = { component.deleteAttachment(attachment) },
+                        onFullscreen = { content -> fullscreenContent = content },
+                        onExitFullScreen = { fullscreenContent = null },
                     )
                 }
 
@@ -161,6 +171,17 @@ fun ViewEntryScene(component: EntryComponent) {
                     }
                 }
             }
+        }
+    }
+
+    fullscreenContent?.let { content ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+        ) {
+            content()
         }
     }
 }

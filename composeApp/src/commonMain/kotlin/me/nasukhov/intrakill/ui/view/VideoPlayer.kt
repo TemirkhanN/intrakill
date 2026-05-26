@@ -7,9 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import chaintech.videoplayer.host.MediaPlayerEvent
 import chaintech.videoplayer.host.MediaPlayerHost
 import chaintech.videoplayer.model.VideoPlayerConfig
 import chaintech.videoplayer.ui.video.VideoPlayerComposable
@@ -31,24 +30,26 @@ import me.nasukhov.intrakill.domain.model.Attachment
 import java.io.File
 
 @Composable
-fun VideoPlayer(attachment: Attachment) {
+fun VideoPlayer(
+    attachment: Attachment,
+    onFullscreen: (content: @Composable () -> Unit) -> Unit,
+    onExitFullScreen: () -> Unit,
+) {
     var isLoaded by remember { mutableStateOf(false) }
 
-    var isVerticalVideo by remember { mutableStateOf(false) }
-
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .aspectRatio(if (!isVerticalVideo) 16f / 9 else 9f / 16),
-        contentAlignment = Alignment.Center,
-    ) {
-        Crossfade(
-            targetState = isLoaded,
-        ) { isReady ->
-            if (isReady) {
-                RealPlayer(attachment)
-            } else {
+    Crossfade(
+        targetState = isLoaded,
+    ) { isReady ->
+        if (isReady) {
+            RealPlayer(attachment, onFullscreen, onExitFullScreen)
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .aspectRatio(16f / 9),
+                contentAlignment = Alignment.Center,
+            ) {
                 Image(
                     bitmap = attachment.preview.asImageBitmap(),
                     contentDescription = "Video Preview",
@@ -59,16 +60,17 @@ fun VideoPlayer(attachment: Attachment) {
                             .fillMaxSize(),
                     contentScale = ContentScale.Fit,
                 )
-                Button(onClick = { isVerticalVideo = !isVerticalVideo }) {
-                    Text(if (isVerticalVideo) "horizontal" else "vertical")
-                }
             }
         }
     }
 }
 
 @Composable
-private fun RealPlayer(attachment: Attachment) {
+private fun RealPlayer(
+    attachment: Attachment,
+    onFullscreen: (content: @Composable () -> Unit) -> Unit,
+    onExitFullScreen: () -> Unit,
+) {
     var error by remember { mutableStateOf("") }
     var tempFile by remember { mutableStateOf<File?>(null) }
     var isWritingFile by remember { mutableStateOf(true) }
@@ -111,8 +113,41 @@ private fun RealPlayer(attachment: Attachment) {
                         isLooping = true,
                     )
                 }
+
+            playerHost.onEvent = { event ->
+                when (event) {
+                    is MediaPlayerEvent.FullScreenChange -> {
+                        if (event.isFullScreen) {
+                            playerHost.pause()
+                            onFullscreen {
+                                VideoPlayerComposable(
+                                    modifier = Modifier.fillMaxSize(),
+                                    playerHost = playerHost,
+                                    playerConfig =
+                                        VideoPlayerConfig(
+                                            isFullScreenEnabled = true,
+                                            isPauseResumeEnabled = true,
+                                            isSeekBarVisible = true,
+                                            isDurationVisible = true,
+                                            isAutoHideControlEnabled = true,
+                                            isGestureVolumeControlEnabled = false,
+                                            controlHideIntervalSeconds = 3,
+                                        ),
+                                )
+
+                                playerHost.play()
+                            }
+                        } else {
+                            onExitFullScreen()
+                        }
+                    }
+
+                    else -> {}
+                }
+            }
+
             VideoPlayerComposable(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().aspectRatio(16f / 9),
                 playerHost = playerHost,
                 playerConfig =
                     VideoPlayerConfig(
@@ -121,9 +156,10 @@ private fun RealPlayer(attachment: Attachment) {
                         isDurationVisible = true,
                         isAutoHideControlEnabled = true,
                         isGestureVolumeControlEnabled = false,
-                        controlHideIntervalSeconds = 5,
+                        controlHideIntervalSeconds = 3,
                     ),
             )
+
             DisposableEffect(playerHost) {
                 onDispose {
                     playerHost.pause()

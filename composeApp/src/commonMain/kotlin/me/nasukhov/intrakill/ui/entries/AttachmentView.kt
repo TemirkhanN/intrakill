@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,45 +33,68 @@ fun AttachmentView(
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onFullscreen: (content: @Composable () -> Unit) -> Unit = {},
+    onExitFullScreen: () -> Unit = {},
 ) {
+    when (attachment.mediaKind) {
+        MediaKind.IMAGE,
+        MediaKind.GIF,
+        -> ImageView(attachment) { if (editMode) AttachmentEditor(onMoveUp, onMoveDown, onDelete) }
+
+        MediaKind.VIDEO -> VideoPlayer(attachment, onFullscreen, onExitFullScreen)
+    }
+}
+
+@Composable
+private fun ImageView(
+    attachment: Attachment,
+    controlBar: @Composable BoxScope.() -> Unit,
+) {
+    check(attachment.mediaKind == MediaKind.IMAGE || attachment.mediaKind == MediaKind.GIF)
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
-        when (attachment.mediaKind) {
-            MediaKind.IMAGE ->
-                Image(
-                    bitmap = attachment.imageBitmap,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth,
-                )
-            MediaKind.GIF ->
-                AsyncImage(
-                    model = attachment.content.readBytes(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentScale = ContentScale.FillWidth,
-                )
-            MediaKind.VIDEO -> VideoPlayer(attachment)
+        if (attachment.mediaKind == MediaKind.IMAGE) {
+            Image(
+                bitmap = attachment.imageBitmap,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth,
+            )
+        } else {
+            AsyncImage(
+                model = attachment.content.readBytes(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth(),
+                contentScale = ContentScale.FillWidth,
+            )
         }
 
-        if (editMode) {
-            Row(
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                        .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-                        .padding(2.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                ControlToolButton(text = "↑", onClick = onMoveUp)
-                ControlToolButton(text = "↓", onClick = onMoveDown)
-                ControlToolButton(text = "✕", color = Color.Red, onClick = onDelete)
-            }
-        }
+        controlBar()
+    }
+}
+
+@Composable
+private fun BoxScope.AttachmentEditor(
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
+                .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ControlToolButton(text = "↑", onClick = onMoveUp)
+        ControlToolButton(text = "↓", onClick = onMoveDown)
+        ControlToolButton(text = "✕", color = Color.Red, onClick = onDelete)
     }
 }
 

@@ -48,8 +48,9 @@ fun SettingsScene(component: SettingsComponent) {
             // TODO must options not be in the component?
             EntriesPerPageSelector(
                 availableOptions = listOf("6", "10", "12", "15", "18", "20"),
-                selected = component.state.value.entriesPerPage.value
-                    .toString(),
+                selected =
+                    component.state.value.entriesPerPage.value
+                        .toString(),
                 modifier = Modifier.fillMaxWidth(),
                 onSelect = { component.changeEntriesPerPage(it.toInt()) },
             )
