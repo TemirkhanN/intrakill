@@ -11,6 +11,7 @@ import com.arkivanov.decompose.retainedComponent
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import me.nasukhov.intrakill.storage.Filesystem
 import me.nasukhov.intrakill.storage.SecureDatabase
+import me.nasukhov.intrakill.ui.clipboard.AndroidClipboard
 import me.nasukhov.intrakill.ui.root.DefaultRootComponent
 
 class MainActivity : ComponentActivity() {
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
         // TODO is there a better way to inject these deps?
         SecureDatabase.init(this)
         Filesystem.init(this)
+        AndroidClipboard.init(this)
 
         val root =
             retainedComponent { context ->

@@ -1,9 +1,11 @@
 package me.nasukhov.intrakill.ui.entries
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -26,6 +28,7 @@ import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.ui.view.VideoPlayer
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AttachmentView(
     attachment: Attachment,
@@ -33,27 +36,45 @@ fun AttachmentView(
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onCopy: (() -> Unit)? = null,
     onFullscreen: (content: @Composable () -> Unit) -> Unit = {},
     onExitFullScreen: () -> Unit = {},
 ) {
     when (attachment.mediaKind) {
         MediaKind.IMAGE,
         MediaKind.GIF,
-        -> ImageView(attachment) { if (editMode) AttachmentEditor(onMoveUp, onMoveDown, onDelete) }
+        ->
+            ImageView(
+                attachment = attachment,
+                onLongClick = onCopy,
+            ) {
+                if (editMode) {
+                    AttachmentEditor(onMoveUp, onMoveDown, onDelete)
+                }
+            }
 
         MediaKind.VIDEO -> VideoPlayer(attachment, onFullscreen, onExitFullScreen)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ImageView(
     attachment: Attachment,
+    onLongClick: (() -> Unit)?,
     controlBar: @Composable BoxScope.() -> Unit,
 ) {
     check(attachment.mediaKind == MediaKind.IMAGE || attachment.mediaKind == MediaKind.GIF)
 
     Box(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    enabled = onLongClick != null,
+                    onClick = {},
+                    onLongClick = onLongClick,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         if (attachment.mediaKind == MediaKind.IMAGE) {

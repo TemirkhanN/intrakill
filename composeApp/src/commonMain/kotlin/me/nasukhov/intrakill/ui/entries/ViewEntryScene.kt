@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,8 +38,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.ui.clipboard.copyImageAttachmentToClipboard
 import me.nasukhov.intrakill.ui.view.ConfirmationDialog
+import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.ui.view.Notifications
 import me.nasukhov.intrakill.ui.view.ReturnButton
 import me.nasukhov.intrakill.ui.view.ScrollUpButton
@@ -47,6 +52,14 @@ fun ViewEntryScene(component: EntryComponent) {
     val state by component.state.subscribeAsState()
 
     var fullscreenContent by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
+    var copyNotification by remember { mutableStateOf<Notification?>(null) }
+
+    LaunchedEffect(copyNotification) {
+        if (copyNotification != null) {
+            delay(2_000)
+            copyNotification = null
+        }
+    }
 
     if (state.isWaitingForActionConfirmation) {
         ConfirmationDialog(
@@ -56,120 +69,143 @@ fun ViewEntryScene(component: EntryComponent) {
         )
     }
 
-    Crossfade(targetState = state.isLoading) { isLoading ->
-        val currentEntry = state.entry
-        val isEditing = state.isEditing
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (currentEntry == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column {
-                    Text("Entry does not exist. It was probably deleted")
-                    ReturnButton(component::close)
+    Box(Modifier.fillMaxSize()) {
+        Crossfade(targetState = state.isLoading) { isLoading ->
+            val currentEntry = state.entry
+            val isEditing = state.isEditing
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (currentEntry == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column {
+                        Text("Entry does not exist. It was probably deleted")
+                        ReturnButton(component::close)
+                    }
+                }
+            } else {
+                val listState = rememberLazyListState()
+                val coroutineScope = rememberCoroutineScope()
+
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .padding(12.dp),
+                ) {
+                    item {
+                        ReturnButton(component::close)
+
+                        Text(currentEntry.name, style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.padding(8.dp))
+
+                        Row {
+                            IconButton(
+                                onClick = component::toggleEditMode,
+                                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            ) {
+                                if (isEditing) {
+                                    Icon(Icons.Filled.Done, contentDescription = "Switch to view mode")
+                                } else {
+                                    Icon(Icons.Default.Edit, contentDescription = "Switch to edit mode")
+                                }
+                            }
+                            if (isEditing) {
+                                IconButton(
+                                    onClick = component::deleteEntry,
+                                    colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                                ) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete entirely")
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        if (isEditing) {
+                            TagsInput(
+                                knownTags = state.knownTags,
+                                selectedTags = currentEntry.tags,
+                                onTagsChanged = component::changeTags,
+                                isEnabled = !state.isSaving,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                enabled = !state.isSaving,
+                                onClick = component::promptAttachmentSelection,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("Add attachments")
+                            }
+
+                            if (state.notifications.isNotEmpty()) {
+                                Spacer(Modifier.height(8.dp))
+                                Notifications(state.notifications)
+                            }
+                        } else {
+                            TagList(
+                                tags = currentEntry.tags,
+                                onTagsChanged = component::onTagsChanged,
+                                initiallyVisible = 5,
+                            )
+                        }
+                    }
+
+                    items(currentEntry.attachments) { attachment ->
+                        AttachmentView(
+                            attachment,
+                            editMode = isEditing,
+                            onMoveUp = { component.moveAttachmentUpwards(attachment) },
+                            onMoveDown = { component.moveAttachmentDownwards(attachment) },
+                            onDelete = { component.deleteAttachment(attachment) },
+                            onCopy = {
+                                runCatching { copyImageAttachmentToClipboard(attachment) }
+                                    .onSuccess {
+                                        copyNotification = Notification.info("Image copied to clipboard")
+                                    }.onFailure {
+                                        copyNotification = Notification.error("Failed to copy image to clipboard")
+                                    }
+                            },
+                            onFullscreen = { content -> fullscreenContent = content },
+                            onExitFullScreen = { fullscreenContent = null },
+                        )
+                    }
+
+                    item {
+                        Row {
+                            ReturnButton(component::close)
+                            Spacer(Modifier.weight(1f))
+                            ScrollUpButton {
+                                val topOfThePagePosition = 0
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(topOfThePagePosition)
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        } else {
-            val listState = rememberLazyListState()
-            val coroutineScope = rememberCoroutineScope()
+        }
 
-            LazyColumn(
-                state = listState,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        copyNotification?.let { notification ->
+            Box(
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                item {
-                    ReturnButton(component::close)
-
-                    Text(currentEntry.name, style = MaterialTheme.typography.titleLarge)
-                    Spacer(Modifier.padding(8.dp))
-
-                    Row {
-                        IconButton(
-                            onClick = component::toggleEditMode,
-                            colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                        ) {
-                            if (isEditing) {
-                                Icon(Icons.Filled.Done, contentDescription = "Switch to view mode")
-                            } else {
-                                Icon(Icons.Default.Edit, contentDescription = "Switch to edit mode")
-                            }
-                        }
-                        if (isEditing) {
-                            IconButton(
-                                onClick = component::deleteEntry,
-                                colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                            ) {
-                                Icon(Icons.Filled.Delete, contentDescription = "Delete entirely")
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    if (isEditing) {
-                        TagsInput(
-                            knownTags = state.knownTags,
-                            selectedTags = currentEntry.tags,
-                            onTagsChanged = component::changeTags,
-                            isEnabled = !state.isSaving,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        Button(
-                            enabled = !state.isSaving,
-                            onClick = component::promptAttachmentSelection,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Add attachments")
-                        }
-
-                        if (state.notifications.isNotEmpty()) {
-                            Spacer(Modifier.height(8.dp))
-                            Notifications(state.notifications)
-                        }
-                    } else {
-                        TagList(
-                            tags = currentEntry.tags,
-                            onTagsChanged = component::onTagsChanged,
-                            initiallyVisible = 5,
-                        )
-                    }
-                }
-
-                items(currentEntry.attachments) { attachment ->
-                    AttachmentView(
-                        attachment,
-                        editMode = isEditing,
-                        onMoveUp = { component.moveAttachmentUpwards(attachment) },
-                        onMoveDown = { component.moveAttachmentDownwards(attachment) },
-                        onDelete = { component.deleteAttachment(attachment) },
-                        onFullscreen = { content -> fullscreenContent = content },
-                        onExitFullScreen = { fullscreenContent = null },
-                    )
-                }
-
-                item {
-                    Row {
-                        ReturnButton(component::close)
-                        Spacer(Modifier.weight(1f))
-                        ScrollUpButton {
-                            val topOfThePagePosition = 0
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(topOfThePagePosition)
-                            }
-                        }
-                    }
-                }
+                Notifications(listOf(notification))
             }
         }
     }
