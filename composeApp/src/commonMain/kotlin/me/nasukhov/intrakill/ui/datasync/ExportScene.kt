@@ -27,9 +27,10 @@ fun ExportScene(component: ExportComponent) {
     val state by component.state.subscribeAsState()
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .keepScreenOn(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .keepScreenOn(),
         contentAlignment = Alignment.Center,
     ) {
         Column(
