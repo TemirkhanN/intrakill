@@ -74,6 +74,7 @@ fun AddEntryScene(component: AddEntryComponent) {
             knownTags = state.knownTags,
             onTagsChanged = component::changeTags,
             isEnabled = !state.isSaving,
+            maxSuggestions = 10,
         )
 
         Spacer(Modifier.height(12.dp))
