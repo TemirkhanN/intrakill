@@ -37,8 +37,7 @@ fun AttachmentView(
     onMoveDown: () -> Unit = {},
     onDelete: () -> Unit = {},
     onCopy: (() -> Unit)? = null,
-    onFullscreen: (content: @Composable () -> Unit) -> Unit = {},
-    onExitFullScreen: () -> Unit = {},
+    onClick: (() -> Unit)? = null,
 ) {
     when (attachment.mediaKind) {
         MediaKind.IMAGE,
@@ -53,7 +52,7 @@ fun AttachmentView(
                 }
             }
 
-        MediaKind.VIDEO -> VideoPlayer(attachment, onFullscreen, onExitFullScreen)
+        MediaKind.VIDEO -> VideoPlayer(attachment, onClick)
     }
 }
 

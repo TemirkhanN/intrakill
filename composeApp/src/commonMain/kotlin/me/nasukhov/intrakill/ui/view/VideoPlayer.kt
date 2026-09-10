@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import chaintech.videoplayer.host.MediaPlayerEvent
 import chaintech.videoplayer.host.MediaPlayerHost
 import chaintech.videoplayer.model.VideoPlayerConfig
 import chaintech.videoplayer.ui.video.VideoPlayerComposable
@@ -32,8 +31,7 @@ import java.io.File
 @Composable
 fun VideoPlayer(
     attachment: Attachment,
-    onFullscreen: (content: @Composable () -> Unit) -> Unit,
-    onExitFullScreen: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     var isLoaded by remember { mutableStateOf(false) }
 
@@ -41,7 +39,7 @@ fun VideoPlayer(
         targetState = isLoaded,
     ) { isReady ->
         if (isReady) {
-            RealPlayer(attachment, onFullscreen, onExitFullScreen)
+            RealPlayer(attachment)
         } else {
             Box(
                 modifier =
@@ -55,9 +53,15 @@ fun VideoPlayer(
                     contentDescription = "Video Preview",
                     modifier =
                         Modifier
-                            .clickable { isLoaded = true }
                             .border(1.dp, Color.Cyan)
-                            .fillMaxSize(),
+                            .fillMaxSize()
+                            .clickable {
+                                if (onClick == null) {
+                                    isLoaded = true
+                                } else {
+                                    onClick.invoke()
+                                }
+                            },
                     contentScale = ContentScale.Fit,
                 )
             }
@@ -66,11 +70,7 @@ fun VideoPlayer(
 }
 
 @Composable
-private fun RealPlayer(
-    attachment: Attachment,
-    onFullscreen: (content: @Composable () -> Unit) -> Unit,
-    onExitFullScreen: () -> Unit,
-) {
+private fun RealPlayer(attachment: Attachment) {
     var error by remember { mutableStateOf("") }
     var tempFile by remember { mutableStateOf<File?>(null) }
     var isWritingFile by remember { mutableStateOf(true) }
@@ -114,40 +114,8 @@ private fun RealPlayer(
                     )
                 }
 
-            playerHost.onEvent = { event ->
-                when (event) {
-                    is MediaPlayerEvent.FullScreenChange -> {
-                        if (event.isFullScreen) {
-                            playerHost.pause()
-                            onFullscreen {
-                                VideoPlayerComposable(
-                                    modifier = Modifier.fillMaxSize(),
-                                    playerHost = playerHost,
-                                    playerConfig =
-                                        VideoPlayerConfig(
-                                            isFullScreenEnabled = true,
-                                            isPauseResumeEnabled = true,
-                                            isSeekBarVisible = true,
-                                            isDurationVisible = true,
-                                            isAutoHideControlEnabled = true,
-                                            isGestureVolumeControlEnabled = false,
-                                            controlHideIntervalSeconds = 3,
-                                        ),
-                                )
-
-                                playerHost.play()
-                            }
-                        } else {
-                            onExitFullScreen()
-                        }
-                    }
-
-                    else -> {}
-                }
-            }
-
             VideoPlayerComposable(
-                modifier = Modifier.fillMaxSize().aspectRatio(16f / 9),
+                modifier = Modifier.fillMaxSize(),
                 playerHost = playerHost,
                 playerConfig =
                     VideoPlayerConfig(

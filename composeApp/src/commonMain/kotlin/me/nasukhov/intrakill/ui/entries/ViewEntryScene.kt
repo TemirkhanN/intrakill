@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.domain.model.Attachment
+import me.nasukhov.intrakill.storage.MediaKind
 import me.nasukhov.intrakill.ui.clipboard.copyImageAttachmentToClipboard
 import me.nasukhov.intrakill.ui.view.ConfirmationDialog
 import me.nasukhov.intrakill.ui.view.Notification
@@ -51,7 +53,7 @@ import me.nasukhov.intrakill.ui.view.ScrollUpButton
 fun ViewEntryScene(component: EntryComponent) {
     val state by component.state.subscribeAsState()
 
-    var fullscreenContent by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
+    var activeVideo by remember { mutableStateOf<Attachment?>(null) }
     var copyNotification by remember { mutableStateOf<Notification?>(null) }
 
     LaunchedEffect(copyNotification) {
@@ -67,6 +69,13 @@ fun ViewEntryScene(component: EntryComponent) {
             onConfirm = component::confirmDelete,
             onCancel = component::cancelDelete,
         )
+    }
+
+    if (activeVideo != null) {
+        activeVideo?.let { AttachmentView(it) }
+        ReturnButton { activeVideo = null }
+
+        return
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -137,6 +146,7 @@ fun ViewEntryScene(component: EntryComponent) {
                                 selectedTags = currentEntry.tags,
                                 onTagsChanged = component::changeTags,
                                 isEnabled = !state.isSaving,
+                                maxSuggestions = 15,
                             )
                             Spacer(Modifier.height(12.dp))
                             Button(
@@ -175,8 +185,11 @@ fun ViewEntryScene(component: EntryComponent) {
                                         copyNotification = Notification.error("Failed to copy image to clipboard")
                                     }
                             },
-                            onFullscreen = { content -> fullscreenContent = content },
-                            onExitFullScreen = { fullscreenContent = null },
+                            onClick = {
+                                if (attachment.mediaKind == MediaKind.VIDEO) {
+                                    activeVideo = attachment
+                                }
+                            },
                         )
                     }
 
@@ -207,17 +220,6 @@ fun ViewEntryScene(component: EntryComponent) {
             ) {
                 Notifications(listOf(notification))
             }
-        }
-    }
-
-    fullscreenContent?.let { content ->
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-        ) {
-            content()
         }
     }
 }
