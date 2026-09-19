@@ -134,6 +134,9 @@ actual object Filesystem {
 
     fun init(context: Context) {
         ctx = context.applicationContext
+
+        // TODO it's a hack to overcome crippled deleteOnExit on android. Also, bad since it's called on the main thread
+        context.cacheDir.listFiles().forEach { runCatching { it.delete() } }
     }
 
     actual fun getDbFile(dbName: String): File {
