@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +33,7 @@ import java.io.File
 fun VideoPlayer(
     attachment: Attachment,
     onClick: (() -> Unit)?,
+    controlBar: @Composable BoxScope.() -> Unit,
 ) {
     var isLoaded by remember { mutableStateOf(false) }
 
@@ -64,6 +66,7 @@ fun VideoPlayer(
                             },
                     contentScale = ContentScale.Fit,
                 )
+                controlBar()
             }
         }
     }

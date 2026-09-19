@@ -52,7 +52,12 @@ fun AttachmentView(
                 }
             }
 
-        MediaKind.VIDEO -> VideoPlayer(attachment, onClick)
+        MediaKind.VIDEO ->
+            VideoPlayer(attachment, onClick) {
+                if (editMode) {
+                    AttachmentEditor(onMoveUp, onMoveDown, onDelete)
+                }
+            }
     }
 }
 
