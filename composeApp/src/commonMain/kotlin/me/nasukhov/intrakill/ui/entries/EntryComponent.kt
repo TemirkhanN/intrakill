@@ -5,7 +5,24 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import com.arkivanov.essenty.backhandler.BackCallback
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.install
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondOutputStream
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromStream
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.domain.model.Tag
@@ -14,10 +31,18 @@ import me.nasukhov.intrakill.domain.model.moveDownwards
 import me.nasukhov.intrakill.domain.model.moveUpwards
 import me.nasukhov.intrakill.domain.model.remove
 import me.nasukhov.intrakill.domain.repository.MediaRepository
+import me.nasukhov.intrakill.getLocalIpAddress
 import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.storage.Content
 import me.nasukhov.intrakill.storage.FilePicker
+import me.nasukhov.intrakill.storage.StorageSource
+import me.nasukhov.intrakill.storage.getServerFactory
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
+import qrcode.QRCode
+import java.net.HttpURLConnection
+import java.net.URI
+import kotlin.random.Random
 
 data class EntryState(
     val entryId: String,
@@ -28,6 +53,7 @@ data class EntryState(
     val isSaving: Boolean = false,
     val isWaitingForActionConfirmation: Boolean = false,
     val notifications: List<Notification> = emptyList(),
+    val sharingQRCode: QRCode? = null,
 )
 
 interface EntryComponent {
@@ -54,6 +80,10 @@ interface EntryComponent {
     fun changeTags(tags: Set<String>)
 
     fun promptAttachmentSelection()
+
+    fun share()
+
+    fun stopSharing()
 }
 
 class DefaultEntryComponent(
@@ -66,10 +96,13 @@ class DefaultEntryComponent(
     override val state: Value<EntryState> = mutableState
     private val scope = instanceKeeper.coroutineScope()
 
+    private val mediaRepository = MediaRepository
+    private var sharing: Sharing? = null
+
     init {
         scope.launch {
-            var entry = MediaRepository.findById(entryId)
-            val knownTags = MediaRepository.listTags()
+            var entry = mediaRepository.findById(entryId)
+            val knownTags = mediaRepository.listTags()
             mutableState.update {
                 it.copy(
                     entry = entry,
@@ -83,6 +116,7 @@ class DefaultEntryComponent(
     }
 
     override fun close() {
+        sharing?.stop()
         navigate(Request.Back)
     }
 
@@ -95,8 +129,8 @@ class DefaultEntryComponent(
         mutableState.value.let {
             require(it.isEditing && it.entry != null)
             scope.launch {
-                MediaRepository.deleteById(it.entry.id)
-                navigate(Request.Back)
+                mediaRepository.deleteById(it.entry.id)
+                close()
             }
         }
     }
@@ -130,7 +164,7 @@ class DefaultEntryComponent(
 
             scope.launch {
                 val updatedEntry =
-                    MediaRepository.save(
+                    mediaRepository.save(
                         current.entry.copy(attachments = modifiedAttachments),
                     )
 
@@ -145,7 +179,7 @@ class DefaultEntryComponent(
 
             scope.launch {
                 val updatedEntry =
-                    MediaRepository.save(
+                    mediaRepository.save(
                         current.entry.copy(attachments = current.entry.attachments.moveUpwards(attachment)),
                     )
 
@@ -160,7 +194,7 @@ class DefaultEntryComponent(
 
             scope.launch {
                 val updatedEntry =
-                    MediaRepository.save(
+                    mediaRepository.save(
                         current.entry.copy(attachments = current.entry.attachments.moveDownwards(attachment)),
                     )
 
@@ -174,7 +208,7 @@ class DefaultEntryComponent(
             require(current.entry != null)
 
             scope.launch {
-                val updatedEntry = MediaRepository.save(current.entry.copy(tags = tags))
+                val updatedEntry = mediaRepository.save(current.entry.copy(tags = tags))
 
                 mutableState.update { it.copy(entry = updatedEntry) }
             }
@@ -203,7 +237,7 @@ class DefaultEntryComponent(
 
                 if (!newAttachments.isEmpty()) {
                     val updatedEntry =
-                        MediaRepository.save(
+                        mediaRepository.save(
                             current.entry.copy(attachments = current.entry.attachments.combine(newAttachments)),
                         )
 
@@ -217,5 +251,138 @@ class DefaultEntryComponent(
                 }
             }
         }
+    }
+
+    override fun share() {
+        mutableState.apply {
+            val entry = value.entry
+            if (entry == null) {
+                return@apply
+            }
+
+            val share = Sharing(entry)
+
+            update { it.copy(sharingQRCode = share.start()) }
+        }
+    }
+
+    override fun stopSharing() {
+        sharing?.stop()
+        mutableState.update { it.copy(sharingQRCode = null) }
+    }
+}
+
+class Sharing(
+    private val entry: Entry,
+) {
+    @Serializable
+    data class Code(
+        val source: StorageSource,
+        val entryId: String,
+        val key: Int = Random.nextInt(),
+    ) {
+        fun getQR(): QRCode =
+            QRCode
+                .ofSquares()
+                .build(Json.encodeToString(this))
+
+        @OptIn(ExperimentalSerializationApi::class)
+        suspend fun resolve(): Entry =
+            withContext(Dispatchers.IO) {
+                val secretKey = key.toString()
+
+                request(source.urlTo("/shared/$entryId"), secretKey) {
+                    val entry = Json.decodeFromStream<Entry>(inputStream)
+
+                    entry.copy(
+                        isPersisted = false,
+                        attachments = entry.attachments.map { it.copy(content = getAttachmentContent(it.id), isPersisted = false) },
+                    )
+                }
+            }
+
+        private fun getAttachmentContent(attachmentId: String) =
+            Content {
+                val secretKey = key.toString()
+
+                request(source.urlTo("/attachments/$attachmentId/content"), secretKey) {
+                    inputStream
+                }
+            }
+
+        private fun <R> request(
+            uri: URI,
+            secretKey: String,
+            block: HttpURLConnection.() -> R,
+        ): R =
+            (uri.toURL().openConnection() as HttpURLConnection)
+                .apply {
+                    connectTimeout = 5000
+                    readTimeout = 300000
+                    requestMethod = "GET"
+                    doInput = true
+                    setRequestProperty("Authorization", secretKey)
+
+                    check(responseCode == HttpURLConnection.HTTP_OK) {
+                        "Error $responseCode occurred"
+                    }
+                }.block()
+    }
+
+    private var cancellation: () -> Unit = {}
+
+    fun start(): QRCode {
+        val ip = getLocalIpAddress()
+        val port = 8083
+
+        val sharingCode = Code(StorageSource(ip, port), entry.id)
+
+        val server =
+            embeddedServer(getServerFactory(), host = ip, port = port) {
+                install(ContentNegotiation) {
+                    json(
+                        Json {
+                            encodeDefaults = true
+                            prettyPrint = false
+                        },
+                    )
+                }
+                routing {
+                    get("/shared/${entry.id}") {
+                        val secretKey = call.request.headers[HttpHeaders.Authorization]
+                        if (secretKey != sharingCode.key.toString()) {
+                            call.respond(HttpStatusCode.Forbidden)
+                        }
+
+                        call.respond(entry)
+                    }
+                    get("/attachments/{id}/content") {
+                        val secretKey = call.request.headers[HttpHeaders.Authorization]
+                        if (secretKey != sharingCode.key.toString()) {
+                            call.respond(HttpStatusCode.Forbidden)
+                        }
+                        val attachmentId = call.parameters["id"] ?: ""
+                        val attachment = entry.attachments.find { it.id == attachmentId }
+                        if (attachment == null) {
+                            call.respond(HttpStatusCode.BadRequest)
+                        } else {
+                            call.respondOutputStream(ContentType.Application.OctetStream) {
+                                attachment.content.use { inputStream ->
+                                    inputStream.copyTo(this)
+                                }
+                            }
+                        }
+                    }
+                }
+            }.start(wait = false)
+
+        cancellation = server::stop
+
+        return sharingCode.getQR()
+    }
+
+    fun stop() {
+        cancellation()
+        cancellation = {}
     }
 }

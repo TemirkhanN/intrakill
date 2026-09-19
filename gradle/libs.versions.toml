@@ -20,17 +20,19 @@ foundation = "1.10.1"
 javacvPlatform = "1.5.13"
 jbcrypt = "0.4"
 junitJupiter = "6.0.3"
-kotlin = "2.3.10"
-kotlinx-coroutines = "1.10.2"
-kotlinxDatetime = "0.7.1"
-kotlinxSerializationJson = "1.10.0"
+kotlin = "2.4.20"
+kotlinx-coroutines = "1.11.0"
+kotlinxDatetime = "0.8.0"
+kotlinxSerializationJson = "1.11.0"
 ktor = "3.5.0"
 material3 = "1.9.0"
 materialIconsCore = "1.7.3"
-runtime = "1.10.1"
+qrGenerator = "4.5.0"
+qrScanner = "0.7.2"
+runtime = "1.11.0"
 sqlite = "2.6.2"
 sqliteJdbcVersion = "3.51.2.0"
-uiToolingPreview = "1.10.1"
+uiToolingPreview = "1.11.0"
 
 [libraries]
 android-database-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "androidDatabaseSqlcipher" }
@@ -69,6 +71,9 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "uiToolingP
 compose-ui-tooling = { module = "org.jetbrains.compose.ui:ui-tooling", version.ref = "uiToolingPreview" }
 compose-ui-tooling-preview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "uiToolingPreview" }
 material-icons-core = { module = "org.jetbrains.compose.material:material-icons-core", version.ref = "materialIconsCore" }
+material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsCore" }
+qr-scanner = { module = "io.github.kalinjul.easyqrscan:scanner", version.ref = "qrScanner" }
+qr-generator = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrGenerator" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

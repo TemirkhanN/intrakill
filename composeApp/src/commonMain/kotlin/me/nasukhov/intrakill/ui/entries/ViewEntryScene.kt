@@ -1,6 +1,7 @@
 package me.nasukhov.intrakill.ui.entries
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +17,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -48,6 +51,7 @@ import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.ui.view.Notifications
 import me.nasukhov.intrakill.ui.view.ReturnButton
 import me.nasukhov.intrakill.ui.view.ScrollUpButton
+import me.nasukhov.intrakill.ui.view.asImageBitmap
 
 @Composable
 fun ViewEntryScene(component: EntryComponent) {
@@ -118,6 +122,9 @@ fun ViewEntryScene(component: EntryComponent) {
                         Spacer(Modifier.padding(8.dp))
 
                         Row {
+                            IconButton(onClick = component::share) {
+                                Icon(Icons.Filled.Share, contentDescription = "Share entry via QR code")
+                            }
                             IconButton(
                                 onClick = component::toggleEditMode,
                                 colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -219,6 +226,29 @@ fun ViewEntryScene(component: EntryComponent) {
                         .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 Notifications(listOf(notification))
+            }
+        }
+
+        state.sharingQRCode?.let {
+            Box(
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .fillMaxSize()
+                        .background(Color.White),
+            ) {
+                Image(
+                    bitmap = it.render().getBytes().asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize().padding(10.dp),
+                )
+                IconButton(
+                    onClick = component::stopSharing,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                ) {
+                    Icon(Icons.Filled.Close, contentDescription = "Stop sharing")
+                }
             }
         }
     }

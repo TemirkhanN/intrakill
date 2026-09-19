@@ -5,9 +5,7 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import com.arkivanov.essenty.backhandler.BackCallback
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.domain.model.Tag
@@ -37,6 +35,10 @@ interface AddEntryComponent {
     fun moveAttachmentUpwards(attachment: Attachment)
 
     fun moveAttachmentDownwards(attachment: Attachment)
+
+    fun importEntry(data: Sharing.Code? = null)
+
+    fun cancelImport()
 }
 
 data class NewEntryState(
@@ -46,6 +48,7 @@ data class NewEntryState(
     val attachments: List<Attachment> = emptyList(),
     val violations: List<String> = emptyList(),
     val isSaving: Boolean = false,
+    val isScanningQR: Boolean = false,
 )
 
 class DefaultAddEntryComponent(
@@ -140,6 +143,32 @@ class DefaultAddEntryComponent(
         }
     }
 
+    override fun importEntry(data: Sharing.Code?) {
+        val current = state.value
+        if (current.isSaving) {
+            return
+        }
+
+        if (data == null) {
+            mutableState.update { it.copy(isScanningQR = true) }
+        } else {
+            mutableState.update { it.copy(isScanningQR = false, isSaving = true) }
+            scope.launch {
+                try {
+                    val newEntry = data.resolve()
+                    val savedEntry = MediaRepository.save(newEntry)
+                    navigate(Request.ViewEntry(savedEntry.id))
+                } catch (_: Throwable) {
+                    mutableState.update { it.copy(isSaving = false, violations = listOf("Could not import entry")) }
+                }
+            }
+        }
+    }
+
+    override fun cancelImport() {
+        mutableState.update { it.copy(isScanningQR = false) }
+    }
+
     override fun save() {
         val current = state.value
         if (current.isSaving) {
@@ -156,16 +185,15 @@ class DefaultAddEntryComponent(
             mutableState.update { it.copy(isSaving = true, violations = violations) }
             try {
                 val entry =
-                    withContext(Dispatchers.IO) {
-                        MediaRepository.save(
-                            Entry(
-                                name = current.name,
-                                preview = current.attachments.first().preview,
-                                attachments = current.attachments,
-                                tags = current.selectedTags,
-                            ),
-                        )
-                    }
+                    MediaRepository.save(
+                        Entry(
+                            name = current.name,
+                            preview = current.attachments.first().preview,
+                            attachments = current.attachments,
+                            tags = current.selectedTags,
+                        ),
+                    )
+
                 navigate(Request.ViewEntry(entry.id))
             } catch (e: Exception) {
                 mutableState.update { it.copy(violations = listOf("[Fatal] Failed to save: ${e.message}"), isSaving = false) }

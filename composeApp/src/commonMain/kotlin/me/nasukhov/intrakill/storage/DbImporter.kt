@@ -2,8 +2,10 @@ package me.nasukhov.intrakill.storage
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import me.nasukhov.intrakill.domain.model.Entry
 import java.io.File
+import java.net.URI
 
 expect object Filesystem {
     fun getDbFile(dbName: String): File
@@ -32,6 +34,7 @@ data class Progress(
 }
 
 @JvmInline
+@Serializable
 value class StorageSource(
     val value: String,
 ) {
@@ -40,6 +43,8 @@ value class StorageSource(
     }
 
     constructor(ip: String, port: Int) : this("http://$ip:$port")
+
+    fun urlTo(destination: String) = URI("$this/${destination.trimStart('/')}")
 
     override fun toString() = value
 }

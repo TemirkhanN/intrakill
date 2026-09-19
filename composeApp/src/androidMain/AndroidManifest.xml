@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--CAMERA related features used for QR scanning/sharing-->
+    <uses-feature android:name="android.hardware.camera"/>
+    <uses-feature android:name="android.hardware.camera.autofocus"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!--INTERNET used for import, export, sharing-->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
             android:allowBackup="true"

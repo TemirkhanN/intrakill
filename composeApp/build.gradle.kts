@@ -53,9 +53,12 @@ kotlin {
             implementation(libs.ktor.server.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.material.icons.core)
+            implementation(libs.material.icons.extended)
             implementation(libs.ktor.server.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.coil.compose)
+            implementation(libs.qr.generator)
+            implementation(libs.qr.scanner)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

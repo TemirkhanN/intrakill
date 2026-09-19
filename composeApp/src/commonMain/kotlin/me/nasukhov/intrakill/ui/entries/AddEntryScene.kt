@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,11 +22,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.arkivanov.decompose.extensions.compose.subscribeAsState
+import kotlinx.serialization.json.Json
 import me.nasukhov.intrakill.ui.view.ReturnButton
+import org.publicvalue.multiplatform.qrcode.CodeType
+import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
 @Composable
 fun AddEntryScene(component: AddEntryComponent) {
     val state by component.state.subscribeAsState()
+
+    if (state.isScanningQR) {
+        ScannerWithPermissions(
+            modifier = Modifier.fillMaxSize(),
+            onScanned = {
+                try {
+                    val data = Json.decodeFromString<Sharing.Code>(it)
+
+                    component.importEntry(data)
+
+                    true
+                } catch (_: Exception) {
+                    false
+                }
+            },
+            types = listOf(CodeType.QR),
+            enableTorch = false,
+        )
+
+        ReturnButton(component::cancelImport)
+        return
+    }
 
     Column(
         modifier =
@@ -31,6 +60,10 @@ fun AddEntryScene(component: AddEntryComponent) {
                 .padding(16.dp),
     ) {
         ReturnButton(component::close)
+
+        IconButton(onClick = component::importEntry) {
+            Icon(Icons.Rounded.QrCodeScanner, contentDescription = "Import via QR")
+        }
 
         Button(
             enabled = !state.isSaving,
