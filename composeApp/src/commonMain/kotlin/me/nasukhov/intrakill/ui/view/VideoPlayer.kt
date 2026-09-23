@@ -27,6 +27,7 @@ import chaintech.videoplayer.ui.video.VideoPlayerComposable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.domain.model.Attachment
+import me.nasukhov.intrakill.storage.Filesystem
 import java.io.File
 
 @Composable
@@ -82,11 +83,10 @@ private fun RealPlayer(attachment: Attachment) {
         withContext(Dispatchers.IO) {
             try {
                 val file =
-                    File.createTempFile("intrakill_vid_", ".mp4").apply {
+                    Filesystem.getTmpFile("intrakill_vid_").apply {
                         outputStream().use { output ->
                             attachment.content.use { it.copyTo(output) }
                         }
-                        deleteOnExit()
                     }
                 tempFile = file
             } catch (e: Exception) {
