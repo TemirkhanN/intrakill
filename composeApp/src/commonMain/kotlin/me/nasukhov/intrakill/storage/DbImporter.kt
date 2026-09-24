@@ -3,8 +3,6 @@ package me.nasukhov.intrakill.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import me.nasukhov.intrakill.domain.model.Entry
-import java.io.File
 import java.net.URI
 
 data class Progress(
@@ -45,6 +43,7 @@ value class StorageSource(
 
 object DbImporter {
     private val db = SecureDatabase
+    private val sourceStorage = ExternalStorage
 
     /**
      * Imports a remote database and saves it locally.
@@ -56,8 +55,10 @@ object DbImporter {
         onProgress: (Progress) -> Unit = {},
     ): Boolean =
         withContext(Dispatchers.IO) {
-            ExternalStorage.resolve(source, password)
-            val dump = ExternalStorage.downloadDump(onProgress)
+            val dump =
+                sourceStorage.open(source, password) {
+                    downloadDump(onProgress)
+                }
 
             try {
                 db.importFromFile(dump, password)
@@ -72,48 +73,31 @@ object DbImporter {
         onProgress: (Progress) -> Unit,
     ): Unit =
         withContext(Dispatchers.IO) {
-            val apiService = ExternalStorage.apply { resolve(source, password) }
+            sourceStorage.open(source, password) {
+                val idsToSync = mutableSetOf<String>()
+                var offset = 0
+                val limit = 1000
+                var hasMore = true
 
-            val idsToSync = mutableSetOf<String>()
-            var offset = 0
-            val limit = 1000
-            var hasMore = true
-
-            while (hasMore) {
-                val fetchedIds = apiService.listEntriesIds(offset, limit)
-                if (!fetchedIds.isEmpty()) {
-                    val missing = db.filterMissingIds(fetchedIds)
-                    idsToSync.addAll(missing)
-                    offset += limit
-                } else {
-                    hasMore = false
+                while (hasMore) {
+                    val fetchedIds = listEntriesIds(offset, limit)
+                    if (!fetchedIds.isEmpty()) {
+                        val missing = db.filterMissingIds(fetchedIds)
+                        idsToSync.addAll(missing)
+                        offset += limit
+                    } else {
+                        hasMore = false
+                    }
                 }
-            }
 
-            var successfullySynced = 0
-            idsToSync.forEach { id ->
-                try {
-                    db.saveEntry(apiService.getById(id))
-                    onProgress(Progress(++successfullySynced, idsToSync.size))
-                } catch (_: Exception) {
+                var successfullySynced = 0
+                idsToSync.forEach { id ->
+                    try {
+                        db.saveEntry(getById(id))
+                        onProgress(Progress(++successfullySynced, idsToSync.size))
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
-}
-
-expect object ExternalStorage {
-    // TODO DI is the way. This is rather meh
-    fun resolve(
-        source: StorageSource,
-        password: String,
-    )
-
-    suspend fun downloadDump(onProgress: (Progress) -> Unit): File
-
-    suspend fun listEntriesIds(
-        offset: Int = 0,
-        limit: Int = Int.MAX_VALUE,
-    ): Set<String>
-
-    suspend fun getById(id: String): Entry
 }

@@ -66,11 +66,18 @@ private class ApiService(
 actual object ExternalStorage {
     private var apiService: ApiService? = null
 
-    actual fun resolve(
+    actual suspend fun <R> open(
         source: StorageSource,
         password: String,
-    ) {
+        then: suspend ExternalStorage.() -> R,
+    ): R {
         apiService = ApiService(source, password)
+
+        return try {
+            this@ExternalStorage.then()
+        } finally {
+            apiService = null
+        }
     }
 
     actual suspend fun downloadDump(onProgress: (Progress) -> Unit): File =

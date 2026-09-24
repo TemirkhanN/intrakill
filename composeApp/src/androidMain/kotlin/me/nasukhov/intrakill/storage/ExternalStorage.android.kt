@@ -14,12 +14,19 @@ actual object ExternalStorage {
     private var source: StorageSource? = null
     private var token: String? = null
 
-    actual fun resolve(
+    actual suspend fun <R> open(
         source: StorageSource,
         password: String,
-    ) {
+        then: suspend ExternalStorage.() -> R,
+    ): R {
         this.source = source
         token = Security.hash(password)
+        return try {
+            this@ExternalStorage.then()
+        } finally {
+            this.source = null
+            token = null
+        }
     }
 
     actual suspend fun downloadDump(onProgress: (Progress) -> Unit) =
