@@ -1,6 +1,5 @@
 package me.nasukhov.intrakill.storage
 
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -8,7 +7,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import me.nasukhov.intrakill.Security
 import me.nasukhov.intrakill.domain.model.Entry
-import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -127,26 +125,4 @@ actual object ExternalStorage {
                 inputStream
             }
         }
-}
-
-actual object Filesystem {
-    private lateinit var ctx: Context
-
-    fun init(context: Context) {
-        ctx = context.applicationContext
-
-        // TODO it's a hack to overcome crippled deleteOnExit on android. Also, bad since it's called on the main thread
-        context.cacheDir.listFiles().forEach { runCatching { it.delete() } }
-    }
-
-    actual fun getDbFile(dbName: String): File {
-        require(dbName.matches("^[a-zA-Z0-9_]+\\.db$".toRegex())) { "Database name must follow pattern %s.db" }
-
-        val file = ctx.getDatabasePath(dbName)
-        file.parentFile?.mkdirs()
-
-        return file
-    }
-
-    actual fun getTmpFile(prefix: String): File = File.createTempFile(prefix, null, ctx.cacheDir).also { it.deleteOnExit() }
 }

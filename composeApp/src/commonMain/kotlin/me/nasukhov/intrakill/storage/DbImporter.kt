@@ -7,12 +7,6 @@ import me.nasukhov.intrakill.domain.model.Entry
 import java.io.File
 import java.net.URI
 
-expect object Filesystem {
-    fun getDbFile(dbName: String): File
-
-    fun getTmpFile(prefix: String): File
-}
-
 data class Progress(
     val current: Long,
     val outOf: Long,
