@@ -14,7 +14,9 @@ import me.nasukhov.intrakill.domain.model.moveUpwards
 import me.nasukhov.intrakill.domain.model.remove
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.storage.ExternalStorage
 import me.nasukhov.intrakill.storage.FilePicker
+import me.nasukhov.intrakill.storage.Sharing
 import me.nasukhov.intrakill.ui.root.Request
 
 interface AddEntryComponent {
@@ -155,7 +157,10 @@ class DefaultAddEntryComponent(
             mutableState.update { it.copy(isScanningQR = false, isSaving = true) }
             scope.launch {
                 try {
-                    val newEntry = data.resolve()
+                    val newEntry =
+                        ExternalStorage.open(data.source, data.key.toString()) {
+                            getById(data.entryId)
+                        }
                     val savedEntry = MediaRepository.save(newEntry)
                     navigate(Request.ViewEntry(savedEntry.id))
                 } catch (_: Throwable) {

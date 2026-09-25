@@ -5,24 +5,7 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import com.arkivanov.essenty.backhandler.BackCallback
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.install
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.response.respond
-import io.ktor.server.response.respondOutputStream
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.domain.model.Tag
@@ -31,18 +14,12 @@ import me.nasukhov.intrakill.domain.model.moveDownwards
 import me.nasukhov.intrakill.domain.model.moveUpwards
 import me.nasukhov.intrakill.domain.model.remove
 import me.nasukhov.intrakill.domain.repository.MediaRepository
-import me.nasukhov.intrakill.getLocalIpAddress
 import me.nasukhov.intrakill.kmp.coroutineScope
-import me.nasukhov.intrakill.storage.Content
 import me.nasukhov.intrakill.storage.FilePicker
-import me.nasukhov.intrakill.storage.StorageSource
-import me.nasukhov.intrakill.storage.getServerFactory
+import me.nasukhov.intrakill.storage.Sharing
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import qrcode.QRCode
-import java.net.HttpURLConnection
-import java.net.URI
-import kotlin.random.Random
 
 data class EntryState(
     val entryId: String,
@@ -116,8 +93,10 @@ class DefaultEntryComponent(
     }
 
     override fun close() {
-        sharing?.stop()
-        navigate(Request.Back)
+        scope.launch {
+            sharing?.stop()
+            navigate(Request.Back)
+        }
     }
 
     override fun deleteEntry(forced: Boolean) {
@@ -260,129 +239,18 @@ class DefaultEntryComponent(
                 return@apply
             }
 
-            val share = Sharing(entry)
+            sharing = Sharing(entry)
 
-            update { it.copy(sharingQRCode = share.start()) }
+            scope.launch {
+                update { it.copy(sharingQRCode = sharing?.start()) }
+            }
         }
     }
 
     override fun stopSharing() {
-        sharing?.stop()
+        scope.launch {
+            sharing?.stop()
+        }
         mutableState.update { it.copy(sharingQRCode = null) }
-    }
-}
-
-class Sharing(
-    private val entry: Entry,
-) {
-    @Serializable
-    data class Code(
-        val source: StorageSource,
-        val entryId: String,
-        val key: Int = Random.nextInt(),
-    ) {
-        fun getQR(): QRCode =
-            QRCode
-                .ofSquares()
-                .build(Json.encodeToString(this))
-
-        @OptIn(ExperimentalSerializationApi::class)
-        suspend fun resolve(): Entry =
-            withContext(Dispatchers.IO) {
-                val secretKey = key.toString()
-
-                request(source.urlTo("/shared/$entryId"), secretKey) {
-                    val entry = Json.decodeFromStream<Entry>(inputStream)
-
-                    entry.copy(
-                        isPersisted = false,
-                        attachments = entry.attachments.map { it.copy(content = getAttachmentContent(it.id), isPersisted = false) },
-                    )
-                }
-            }
-
-        private fun getAttachmentContent(attachmentId: String) =
-            Content {
-                val secretKey = key.toString()
-
-                request(source.urlTo("/attachments/$attachmentId/content"), secretKey) {
-                    inputStream
-                }
-            }
-
-        private fun <R> request(
-            uri: URI,
-            secretKey: String,
-            block: HttpURLConnection.() -> R,
-        ): R =
-            (uri.toURL().openConnection() as HttpURLConnection)
-                .apply {
-                    connectTimeout = 5000
-                    readTimeout = 300000
-                    requestMethod = "GET"
-                    doInput = true
-                    setRequestProperty("Authorization", secretKey)
-
-                    check(responseCode == HttpURLConnection.HTTP_OK) {
-                        "Error $responseCode occurred"
-                    }
-                }.block()
-    }
-
-    private var cancellation: () -> Unit = {}
-
-    fun start(): QRCode {
-        val ip = getLocalIpAddress()
-        val port = 8083
-
-        val sharingCode = Code(StorageSource(ip, port), entry.id)
-
-        val server =
-            embeddedServer(getServerFactory(), host = ip, port = port) {
-                install(ContentNegotiation) {
-                    json(
-                        Json {
-                            encodeDefaults = true
-                            prettyPrint = false
-                        },
-                    )
-                }
-                routing {
-                    get("/shared/${entry.id}") {
-                        val secretKey = call.request.headers[HttpHeaders.Authorization]
-                        if (secretKey != sharingCode.key.toString()) {
-                            call.respond(HttpStatusCode.Forbidden)
-                        }
-
-                        call.respond(entry)
-                    }
-                    get("/attachments/{id}/content") {
-                        val secretKey = call.request.headers[HttpHeaders.Authorization]
-                        if (secretKey != sharingCode.key.toString()) {
-                            call.respond(HttpStatusCode.Forbidden)
-                        }
-                        val attachmentId = call.parameters["id"] ?: ""
-                        val attachment = entry.attachments.find { it.id == attachmentId }
-                        if (attachment == null) {
-                            call.respond(HttpStatusCode.BadRequest)
-                        } else {
-                            call.respondOutputStream(ContentType.Application.OctetStream) {
-                                attachment.content.use { inputStream ->
-                                    inputStream.copyTo(this)
-                                }
-                            }
-                        }
-                    }
-                }
-            }.start(wait = false)
-
-        cancellation = server::stop
-
-        return sharingCode.getQR()
-    }
-
-    fun stop() {
-        cancellation()
-        cancellation = {}
     }
 }
