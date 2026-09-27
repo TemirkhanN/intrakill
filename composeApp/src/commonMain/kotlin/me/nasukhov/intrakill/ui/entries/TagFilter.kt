@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.max
 
 @Composable
-fun TagList(
+fun TagFilter(
     tags: Set<String>,
     selectedTags: Set<String> = emptySet(),
     onTagsChanged: (Set<String>) -> Unit,

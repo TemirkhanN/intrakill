@@ -169,7 +169,7 @@ fun ViewEntryScene(component: EntryComponent) {
                                 Notifications(state.notifications)
                             }
                         } else {
-                            TagList(
+                            TagFilter(
                                 tags = currentEntry.tags,
                                 onTagsChanged = component::onTagsChanged,
                                 initiallyVisible = 5,
