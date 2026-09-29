@@ -9,6 +9,8 @@ sealed interface Request {
 
     data object OpenSettings : Request
 
+    data object OpenTags : Request
+
     data object ImportRequested : Request
 
     data object ExportRequested : Request

@@ -40,6 +40,8 @@ interface ListEntriesComponent {
     fun onAddClicked()
 
     fun openSettings()
+
+    fun openTagsScene()
 }
 
 class DefaultListEntriesComponent(
@@ -109,6 +111,8 @@ class DefaultListEntriesComponent(
     override fun onAddClicked() = navigate(Request.AddEntry)
 
     override fun openSettings() = navigate(Request.OpenSettings)
+
+    override fun openTagsScene() = navigate(Request.OpenTags)
 
     private suspend fun refreshKnownTags() {
         val allTags = MediaRepository.listTags()

@@ -187,6 +187,7 @@ class DefaultEntryComponent(
             require(current.entry != null)
 
             scope.launch {
+                // TODO bug: new tag doesn't appear in filter on entriesList scene
                 val updatedEntry = mediaRepository.save(current.entry.copy(tags = tags))
 
                 mutableState.update { it.copy(entry = updatedEntry) }

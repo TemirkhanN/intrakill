@@ -7,6 +7,20 @@ import kotlin.use
 class TagRepository(
     private val dbResolver: () -> SQLiteDatabase,
 ) {
+    // TODO other inline queries must to const values too
+    private companion object {
+        const val DELETE_TAG_FROM_ENTRIES_THAT_HAS_PARTICULAR_TAG = """
+                DELETE
+                FROM tags
+                WHERE tag = ?
+                    AND entry_id = (SELECT entry_id FROM tags WHERE tag = ?)
+        """
+
+        const val RENAME_TAG = "UPDATE tags SET tag = ? WHERE tag = ?"
+
+        const val DELETE_TAG = "DELETE FROM tags WHERE tag = ?"
+    }
+
     private val db: SQLiteDatabase
         get() = dbResolver()
 
@@ -71,4 +85,26 @@ class TagRepository(
 
         return result
     }
+
+    fun deleteTag(tagName: String) {
+        db.execSQL(DELETE_TAG.query(), arrayOf(tagName))
+    }
+
+    fun renameTag(
+        oldName: String,
+        newName: String,
+    ) {
+        if (oldName == newName) return
+
+        db.beginTransaction()
+        try {
+            db.execSQL(DELETE_TAG_FROM_ENTRIES_THAT_HAS_PARTICULAR_TAG.query(), arrayOf(oldName, newName))
+            db.execSQL(RENAME_TAG.query(), arrayOf(newName, oldName))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
 }
+
+private fun String.query() = this.trimIndent()

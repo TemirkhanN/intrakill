@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -87,7 +88,12 @@ fun ListEntriesScene(component: ListEntriesComponent) {
                         IconButton(onClick = component::onAddClicked) {
                             Icon(Icons.Rounded.Add, contentDescription = "Add new")
                         }
+                        IconButton(onClick = component::openTagsScene) {
+                            Icon(Icons.Rounded.Tag, contentDescription = "Open tags cloud")
+                        }
+
                         Spacer(modifier = Modifier.weight(1f))
+
                         IconButton(onClick = component::openSettings) {
                             Icon(Icons.Rounded.Settings, contentDescription = "Open settings")
                         }

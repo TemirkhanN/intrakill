@@ -28,4 +28,6 @@ sealed interface Route {
     data object Import : Route
 
     data object Export : Route
+
+    data object OpenTags : Route
 }

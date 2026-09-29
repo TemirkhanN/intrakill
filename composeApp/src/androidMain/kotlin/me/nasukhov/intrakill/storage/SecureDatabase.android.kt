@@ -163,6 +163,13 @@ actual object SecureDatabase {
     actual fun listTags(): Set<Tag> = tagRepository.listTags()
 
     actual fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
+
+    actual fun deleteTag(tagName: String) = tagRepository.deleteTag(tagName)
+
+    actual fun renameTag(
+        oldName: String,
+        newName: String,
+    ) = tagRepository.renameTag(oldName, newName)
 }
 
 private class SQLAdapterAndroid(

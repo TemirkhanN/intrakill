@@ -50,6 +50,13 @@ expect object SecureDatabase {
     fun updateSettings(settings: Map<String, String>)
 
     fun getSettings(): Map<String, String>
+
+    fun deleteTag(tagName: String)
+
+    fun renameTag(
+        oldName: String,
+        newName: String,
+    )
 }
 
 class LazyList<T>(

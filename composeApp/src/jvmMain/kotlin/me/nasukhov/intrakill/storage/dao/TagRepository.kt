@@ -22,6 +22,16 @@ class TagRepository(
         const val ADD_ENTRY_TAGS = "INSERT OR IGNORE INTO tags(entry_id, tag) VALUES (?, ?)"
         const val SELECT_ENTRY_TAGS = "SELECT * FROM tags WHERE entry_id = ?"
         const val DELETE_ENTRY_TAGS = "DELETE FROM tags WHERE entry_id=? AND tag IN (%s)"
+        const val DELETE_TAG = "DELETE FROM tags WHERE tag = ?"
+
+        const val DELETE_TAG_FROM_ENTRIES_THAT_HAS_PARTICULAR_TAG = """
+                DELETE
+                FROM tags
+                WHERE tag = ?
+                    AND entry_id = (SELECT entry_id FROM tags WHERE tag = ?)
+        """
+
+        const val RENAME_TAG = "UPDATE tags SET tag = ? WHERE tag = ?"
     }
 
     fun findAll(): Set<Tag> {
@@ -82,6 +92,44 @@ class TagRepository(
             stmt.setString(1, entryId)
             tags.bind(stmt, 2)
             stmt.executeUpdate()
+        }
+    }
+
+    fun deleteTag(tagName: String) {
+        db.prepareStatement(DELETE_TAG).use { stmt ->
+            stmt.setString(1, tagName)
+            stmt.executeUpdate()
+        }
+    }
+
+    fun renameTag(
+        oldName: String,
+        newName: String,
+    ) {
+        if (oldName == newName) return
+
+        val autoCommitState = db.autoCommit
+        db.autoCommit = false
+        try {
+            db
+                .prepareStatement(DELETE_TAG_FROM_ENTRIES_THAT_HAS_PARTICULAR_TAG)
+                .use { stmt ->
+                    stmt.setString(1, oldName)
+                    stmt.setString(2, newName)
+                    stmt.executeUpdate()
+                }
+
+            db.prepareStatement(RENAME_TAG).use { stmt ->
+                stmt.setString(1, newName)
+                stmt.setString(2, oldName)
+                stmt.executeUpdate()
+            }
+            db.commit()
+        } catch (e: Exception) {
+            db.rollback()
+            throw e
+        } finally {
+            db.autoCommit = autoCommitState
         }
     }
 }

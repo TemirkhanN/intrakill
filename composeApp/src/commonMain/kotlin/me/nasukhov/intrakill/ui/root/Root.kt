@@ -10,7 +10,7 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
-import me.nasukhov.intrakill.domain.model.Settings
+import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.ui.auth.DefaultLoginComponent
 import me.nasukhov.intrakill.ui.auth.LoginComponent
 import me.nasukhov.intrakill.ui.datasync.DefaultExportComponent
@@ -25,6 +25,7 @@ import me.nasukhov.intrakill.ui.entries.EntryComponent
 import me.nasukhov.intrakill.ui.entries.ListEntriesComponent
 import me.nasukhov.intrakill.ui.settings.DefaultSettingsComponent
 import me.nasukhov.intrakill.ui.settings.SettingsComponent
+import me.nasukhov.intrakill.ui.tag.TagsComponent
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -56,6 +57,10 @@ interface RootComponent {
 
         class Settings(
             val component: SettingsComponent,
+        ) : Child()
+
+        class Tags(
+            val component: TagsComponent,
         ) : Child()
     }
 }
@@ -133,7 +138,25 @@ class DefaultRootComponent(
                     ),
                 )
             }
+            is Route.OpenTags -> {
+                RootComponent.Child.Tags(
+                    TagsComponent(
+                        mediaRepository = MediaRepository,
+                        context = context,
+                        navigate = ::handleTagsRequests,
+                    ),
+                )
+            }
         }
+
+    @OptIn(DelicateDecomposeApi::class)
+    private fun handleTagsRequests(request: Request) {
+        when (request) {
+            is Request.Back -> navigation.pop()
+            is Request.ListEntries -> navigation.replaceCurrent(Route.List(filterByTags = request.filterByTags))
+            else -> error("The request $request is not supported in this component")
+        }
+    }
 
     private fun handleSettingsRequests(request: Request) =
         when (request) {
@@ -170,6 +193,7 @@ class DefaultRootComponent(
             is Request.ViewEntry -> navigation.push(Route.View(request.id))
             is Request.AddEntry -> navigation.push(Route.AddEntry)
             is Request.OpenSettings -> navigation.push(Route.OpenSettings)
+            is Request.OpenTags -> navigation.push(Route.OpenTags)
             else -> error("The request $request is not supported in this component")
         }
 

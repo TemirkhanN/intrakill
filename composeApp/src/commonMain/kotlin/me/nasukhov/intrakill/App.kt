@@ -24,6 +24,7 @@ import me.nasukhov.intrakill.ui.entries.ListEntriesScene
 import me.nasukhov.intrakill.ui.entries.ViewEntryScene
 import me.nasukhov.intrakill.ui.root.RootComponent
 import me.nasukhov.intrakill.ui.settings.SettingsScene
+import me.nasukhov.intrakill.ui.tag.TagsScene
 
 val appTimezone = TimeZone.UTC
 
@@ -76,6 +77,7 @@ fun App(root: RootComponent) {
                     is RootComponent.Child.Import -> ImportScene(instance.component)
                     is RootComponent.Child.Export -> ExportScene(instance.component)
                     is RootComponent.Child.Settings -> SettingsScene(instance.component)
+                    is RootComponent.Child.Tags -> TagsScene(instance.component)
                 }
             }
         }

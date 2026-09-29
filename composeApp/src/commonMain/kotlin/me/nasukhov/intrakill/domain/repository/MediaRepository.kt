@@ -73,6 +73,26 @@ object MediaRepository {
             notifyChanged()
         }
 
+    suspend fun renameTag(
+        oldName: String,
+        newName: String,
+    ): Tag? =
+        withContext(Dispatchers.IO) {
+            if (oldName != newName) {
+                SecureDatabase.renameTag(oldName, newName)
+                clearCache()
+            }
+
+            listTags().find { it.name == newName }
+        }
+
+    suspend fun deleteTag(tag: Tag): Unit =
+        withContext(Dispatchers.IO) {
+            SecureDatabase.deleteTag(tag.name)
+            clearCache()
+            notifyChanged()
+        }
+
     private fun clearCache() {
         knownTagsCache = null
     }
