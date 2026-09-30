@@ -76,6 +76,7 @@ class DefaultListEntriesComponent(
                 MediaRepository.updates,
                 Settings.updates,
             ).collectLatest {
+                refreshKnownTags()
                 val newFilter = state.value.filter.copy(limit = Settings.entriesPerPage.value)
                 applyFilter(newFilter)
             }
@@ -120,6 +121,10 @@ class DefaultListEntriesComponent(
     }
 
     private suspend fun applyFilter(newFilter: EntriesFilter) {
+        val availableTags = knownTags.value.map { it.name }
+        val selectedAvailableTags = newFilter.tags.filter { availableTags.contains(it) }.toSet()
+        val newFilter = newFilter.copy(tags = selectedAvailableTags)
+
         mutableState.update {
             it.copy(
                 filter = newFilter,
