@@ -58,6 +58,7 @@ data class NewEntryState(
 class DefaultAddEntryComponent(
     context: ComponentContext,
     private val navigate: (Request) -> Unit,
+    private val mediaRepository: MediaRepository,
 ) : AddEntryComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
@@ -66,7 +67,7 @@ class DefaultAddEntryComponent(
 
     init {
         scope.launch {
-            val knownTags = MediaRepository.listTags()
+            val knownTags = mediaRepository.listTags()
             val freshState = NewEntryState(knownTags = knownTags)
 
             mutableState.value = freshState
@@ -159,7 +160,7 @@ class DefaultAddEntryComponent(
             mutableState.update { it.copy(isScanningQR = false, isSaving = true) }
             scope.launch {
                 try {
-                    val entryWithTheSameId = MediaRepository.findById(data.entryId)
+                    val entryWithTheSameId = mediaRepository.findById(data.entryId)
                     val sharedEntry =
                         ExternalStorage.open(data.source, data.key.toString()) {
                             getById(data.entryId)
@@ -168,12 +169,12 @@ class DefaultAddEntryComponent(
                     val newEntryId =
                         when {
                             entryWithTheSameId == null -> {
-                                MediaRepository.save(sharedEntry.copy(id = data.entryId, createdAt = Time.getCurrent()))
+                                mediaRepository.save(sharedEntry.copy(id = data.entryId, createdAt = Time.getCurrent()))
                                 data.entryId
                             }
                             entryWithTheSameId != sharedEntry -> {
                                 val newId = UUID.randomUUID().toString()
-                                MediaRepository.save(sharedEntry.copy(id = newId, createdAt = Time.getCurrent()))
+                                mediaRepository.save(sharedEntry.copy(id = newId, createdAt = Time.getCurrent()))
                                 newId
                             }
                             else -> data.entryId
@@ -207,7 +208,7 @@ class DefaultAddEntryComponent(
             mutableState.update { it.copy(isSaving = true, violations = violations) }
             try {
                 val entry =
-                    MediaRepository.save(
+                    mediaRepository.save(
                         Entry(
                             name = current.name,
                             preview = current.attachments.first().preview,

@@ -128,6 +128,7 @@ class DefaultRootComponent(
                     DefaultAddEntryComponent(
                         context = context,
                         navigate = ::handleAddEntryRequests,
+                        mediaRepository = MediaRepository,
                     ),
                 )
             is Route.OpenSettings -> {
