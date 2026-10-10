@@ -15,6 +15,7 @@ import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
 import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import me.nasukhov.intrakill.storage.ProvideFilePicker
 import me.nasukhov.intrakill.ui.auth.LoginScene
 import me.nasukhov.intrakill.ui.datasync.ExportScene
@@ -25,8 +26,13 @@ import me.nasukhov.intrakill.ui.entries.ViewEntryScene
 import me.nasukhov.intrakill.ui.root.RootComponent
 import me.nasukhov.intrakill.ui.settings.SettingsScene
 import me.nasukhov.intrakill.ui.tag.TagsScene
+import kotlin.time.Clock
 
-val appTimezone = TimeZone.UTC
+object Time {
+    val TIMEZONE = TimeZone.UTC
+
+    fun getCurrent() = Clock.System.now().toLocalDateTime(TIMEZONE)
+}
 
 @Composable
 fun IntrakillTheme(content: @Composable () -> Unit) {

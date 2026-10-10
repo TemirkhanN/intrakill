@@ -6,6 +6,7 @@ import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import com.arkivanov.essenty.backhandler.BackCallback
 import kotlinx.coroutines.launch
+import me.nasukhov.intrakill.Time
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.domain.model.Tag
@@ -18,6 +19,7 @@ import me.nasukhov.intrakill.storage.ExternalStorage
 import me.nasukhov.intrakill.storage.FilePicker
 import me.nasukhov.intrakill.storage.Sharing
 import me.nasukhov.intrakill.ui.root.Request
+import java.util.UUID
 
 interface AddEntryComponent {
     val state: Value<NewEntryState>
@@ -157,12 +159,27 @@ class DefaultAddEntryComponent(
             mutableState.update { it.copy(isScanningQR = false, isSaving = true) }
             scope.launch {
                 try {
-                    val newEntry =
+                    val entryWithTheSameId = MediaRepository.findById(data.entryId)
+                    val sharedEntry =
                         ExternalStorage.open(data.source, data.key.toString()) {
                             getById(data.entryId)
                         }
-                    val savedEntry = MediaRepository.save(newEntry)
-                    navigate(Request.ViewEntry(savedEntry.id))
+
+                    val newEntryId =
+                        when {
+                            entryWithTheSameId == null -> {
+                                MediaRepository.save(sharedEntry.copy(id = data.entryId, createdAt = Time.getCurrent()))
+                                data.entryId
+                            }
+                            entryWithTheSameId != sharedEntry -> {
+                                val newId = UUID.randomUUID().toString()
+                                MediaRepository.save(sharedEntry.copy(id = newId, createdAt = Time.getCurrent()))
+                                newId
+                            }
+                            else -> data.entryId
+                        }
+
+                    navigate(Request.ViewEntry(newEntryId))
                 } catch (_: Throwable) {
                     mutableState.update { it.copy(isSaving = false, violations = listOf("Could not import entry")) }
                 }

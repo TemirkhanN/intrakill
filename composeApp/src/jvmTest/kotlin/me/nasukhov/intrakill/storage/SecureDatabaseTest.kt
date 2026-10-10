@@ -1,7 +1,7 @@
 package me.nasukhov.intrakill.storage
 
 import kotlinx.datetime.toLocalDateTime
-import me.nasukhov.intrakill.appTimezone
+import me.nasukhov.intrakill.Time
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.domain.model.Entry
 import me.nasukhov.intrakill.domain.model.MimeTypes
@@ -121,7 +121,7 @@ class SecureDatabaseTest {
 
     @Test
     fun `test findEntries`() {
-        val passedSeconds = { seconds: Int -> currentTime.plus(seconds.seconds).toLocalDateTime(appTimezone) }
+        val passedSeconds = { seconds: Int -> currentTime.plus(seconds.seconds).toLocalDateTime(Time.TIMEZONE) }
         val entry1 = createEntry { it.copy(tags = setOf("tag1", "tag2", "tag3"), createdAt = passedSeconds(0)) }
         val entry2 = createEntry { it.copy(tags = setOf("tag1", "tag3", "tag4"), createdAt = passedSeconds(1)) }
         val entry3 = createEntry { it.copy(tags = setOf("tag5"), createdAt = passedSeconds(2)) }
@@ -190,7 +190,6 @@ class SecureDatabaseTest {
                             ),
                         ),
                     tags = setOf("tag1", "tag two", "3rd tag"),
-                    createdAt = currentTime.toLocalDateTime(appTimezone),
                 ),
             )
 
