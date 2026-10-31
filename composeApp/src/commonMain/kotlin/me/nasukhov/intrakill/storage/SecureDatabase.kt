@@ -19,7 +19,7 @@ data class EntriesFilter(
 // Chunk size in application_chunk.data column is no more than this value across all devices.
 internal const val MAX_CHUNK_SIZE = 1 * 1024 * 1024
 
-expect object SecureDatabase {
+interface SecureDatabase {
     fun open(password: String): Boolean
 
     fun changePassword(newPassword: String): Boolean

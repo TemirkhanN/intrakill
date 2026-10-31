@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.storage.Filesystem
+import org.koin.compose.koinInject
 import java.io.File
 
 @Composable
@@ -78,12 +79,13 @@ private fun RealPlayer(attachment: Attachment) {
     var error by remember { mutableStateOf("") }
     var tempFile by remember { mutableStateOf<File?>(null) }
     var isWritingFile by remember { mutableStateOf(true) }
+    val filesystem = koinInject<Filesystem>()
 
     LaunchedEffect(attachment.content) {
         withContext(Dispatchers.IO) {
             try {
                 val file =
-                    Filesystem.getTmpFile("intrakill_vid_").apply {
+                    filesystem.getTmpFile("intrakill_vid_").apply {
                         outputStream().use { output ->
                             attachment.content.use { it.copyTo(output) }
                         }

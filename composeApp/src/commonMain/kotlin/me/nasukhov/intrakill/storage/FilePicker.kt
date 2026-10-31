@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 
 typealias FileSize = Long
 
-expect object FilePicker {
+interface FilePicker {
     suspend fun pickMultiple(): List<Result<PickedMedia>>
 }
 

@@ -63,29 +63,31 @@ private class ApiService(
             }.block()
 }
 
-object ExternalStorage {
-    private var apiService: ApiService? = null
+class ExternalStorage(
+    private val filesystem: Filesystem,
+) {
+    private var api: ApiService? = null
 
     suspend fun <R> open(
         source: StorageSource,
         password: String,
         then: suspend ExternalStorage.() -> R,
     ): R {
-        apiService = ApiService(source, password)
+        api = ApiService(source, password)
 
         return try {
             this@ExternalStorage.then()
         } finally {
-            apiService = null
+            api = null
         }
     }
 
     suspend fun downloadDump(onProgress: (Progress) -> Unit): File =
         withContext(Dispatchers.IO) {
-            apiService!!.getDbDump {
+            api!!.getDbDump {
                 when (responseCode) {
                     HttpURLConnection.HTTP_OK -> {
-                        val tmpFile = Filesystem.getTmpFile("plain_db")
+                        val tmpFile = filesystem.getTmpFile("plain_db")
 
                         val totalBytes = contentLengthLong
                         inputStream.use { input ->
@@ -123,7 +125,7 @@ object ExternalStorage {
         limit: Int,
     ): Set<String> =
         withContext(Dispatchers.IO) {
-            apiService!!.listEntriesIds(limit, offset) {
+            api!!.listEntriesIds(limit, offset) {
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     Json.decodeFromStream(inputStream)
                 } else {
@@ -134,6 +136,6 @@ object ExternalStorage {
 
     suspend fun getById(id: String): Entry =
         withContext(Dispatchers.IO) {
-            apiService!!.getById(id)
+            api!!.getById(id)
         }
 }

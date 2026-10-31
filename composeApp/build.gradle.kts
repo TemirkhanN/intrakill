@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.serialization)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.koin.compiler)
 }
 
 kotlin {
@@ -35,6 +36,10 @@ kotlin {
             implementation(libs.android.database.sqlcipher)
             implementation(libs.ktor.server.android)
             implementation(libs.coil.gif)
+            implementation(libs.koin.android)
+        }
+        androidUnitTest.dependencies {
+            implementation(libs.kotlin.test)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -59,9 +64,14 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.qr.generator)
             implementation(libs.qr.scanner)
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.coroutines.test)
+            implementation(libs.koin.test)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)

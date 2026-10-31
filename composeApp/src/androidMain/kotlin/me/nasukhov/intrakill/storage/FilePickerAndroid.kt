@@ -12,16 +12,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 import kotlin.coroutines.resume
 
 /**
  * Cross-platform FilePicker.
  * On Android, it delegates to ProvideFilePicker infrastructure.
  */
-actual object FilePicker {
+internal class FilePickerAndroid : FilePicker {
+    @Volatile
     internal var delegate: AndroidFilePickerDelegate? = null
 
-    actual suspend fun pickMultiple(): List<Result<PickedMedia>> =
+    override suspend fun pickMultiple(): List<Result<PickedMedia>> =
         delegate?.pickMultiple()
             ?: error("FilePicker not initialized. Wrap your UI in ProvideFilePicker().")
 }
@@ -38,6 +40,8 @@ internal interface AndroidFilePickerDelegate {
  */
 @Composable
 actual fun ProvideFilePicker(content: @Composable () -> Unit) {
+    val filePicker: FilePickerAndroid = koinInject()
+
     val maxAllowedFileSize: FileSize = 100 * 1024 * 1024
 
     val context = LocalContext.current
@@ -87,8 +91,8 @@ actual fun ProvideFilePicker(content: @Composable () -> Unit) {
         }
 
     DisposableEffect(Unit) {
-        FilePicker.delegate = delegate
-        onDispose { FilePicker.delegate = null }
+        filePicker.delegate = delegate
+        onDispose { filePicker.delegate = null }
     }
 
     content()

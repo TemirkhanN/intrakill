@@ -7,6 +7,7 @@ import com.arkivanov.decompose.value.update
 import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.validatePassword
 
@@ -30,7 +31,8 @@ interface LoginComponent {
 
 class DefaultLoginComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit,
+    private val navigate: ComponentNavigation,
+    private val mediaRepository: MediaRepository,
 ) : LoginComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
@@ -55,7 +57,7 @@ class DefaultLoginComponent(
 
         scope.launch {
             mutableState.update { it.copy(isLoggingIn = true, violations = violations) }
-            if (MediaRepository.unlock(current.password)) {
+            if (mediaRepository.unlock(current.password)) {
                 navigate(Request.ListEntries())
             } else {
                 mutableState.update { it.copy(violations = violations + "Incorrect password.", isLoggingIn = false) }

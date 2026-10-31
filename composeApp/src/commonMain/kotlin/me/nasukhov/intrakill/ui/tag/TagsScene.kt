@@ -30,6 +30,7 @@ import me.nasukhov.intrakill.domain.model.Tag
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.TextSizeByWeightScaler
 import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.ReturnButton
 
@@ -42,9 +43,9 @@ data class TagsState(
 )
 
 class TagsComponent(
-    private val mediaRepository: MediaRepository = MediaRepository,
-    private val navigate: (Request) -> Unit,
     val context: ComponentContext,
+    private val navigate: ComponentNavigation,
+    private val mediaRepository: MediaRepository,
 ) : ComponentContext by context {
     private val mutableState = MutableValue(TagsState())
 

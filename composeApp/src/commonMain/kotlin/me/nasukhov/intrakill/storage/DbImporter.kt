@@ -41,10 +41,10 @@ value class StorageSource(
     override fun toString() = value
 }
 
-object DbImporter {
-    private val db = SecureDatabase
-    private val sourceStorage = ExternalStorage
-
+class DbImporter(
+    private val db: SecureDatabase,
+    private val sourceStorage: ExternalStorage,
+) {
     /**
      * Imports a remote database and saves it locally.
      * Returns true if file was successfully downloaded.

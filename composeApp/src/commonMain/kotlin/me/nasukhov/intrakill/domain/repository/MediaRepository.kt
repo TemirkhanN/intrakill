@@ -14,7 +14,9 @@ data class EntriesSearchResult(
     val outOfTotal: Int,
 )
 
-object MediaRepository {
+class MediaRepository(
+    private val secureDatabase: SecureDatabase,
+) {
     private var knownTagsCache: Set<Tag>? = null
 
     // A shared signal that fires whenever entries change
@@ -28,17 +30,17 @@ object MediaRepository {
 
     suspend fun unlock(password: String): Boolean =
         withContext(Dispatchers.IO) {
-            SecureDatabase.open(password)
+            secureDatabase.open(password)
         }
 
     suspend fun changePassword(newPassword: String): Boolean =
         withContext(Dispatchers.IO) {
-            SecureDatabase.changePassword(newPassword)
+            secureDatabase.changePassword(newPassword)
         }
 
     suspend fun save(entry: Entry): Entry =
         withContext(Dispatchers.IO) {
-            val result = SecureDatabase.saveEntry(entry)
+            val result = secureDatabase.saveEntry(entry)
             clearCache()
             notifyChanged()
             result
@@ -46,21 +48,21 @@ object MediaRepository {
 
     suspend fun listTags(): Set<Tag> =
         withContext(Dispatchers.IO) {
-            knownTagsCache ?: SecureDatabase.listTags().also { knownTagsCache = it }
+            knownTagsCache ?: secureDatabase.listTags().also { knownTagsCache = it }
         }
 
     suspend fun findEntries(filter: EntriesFilter): EntriesSearchResult =
         withContext(Dispatchers.IO) {
             EntriesSearchResult(
-                SecureDatabase.findEntries(filter),
-                SecureDatabase.countEntries(filter),
+                secureDatabase.findEntries(filter),
+                secureDatabase.countEntries(filter),
             )
         }
 
     suspend fun findById(entryId: String): Entry? =
         withContext(Dispatchers.IO) {
             try {
-                SecureDatabase.getById(entryId)
+                secureDatabase.getById(entryId)
             } catch (_: Exception) {
                 null
             }
@@ -68,7 +70,7 @@ object MediaRepository {
 
     suspend fun deleteById(entryId: String): Unit =
         withContext(Dispatchers.IO) {
-            SecureDatabase.deleteById(entryId)
+            secureDatabase.deleteById(entryId)
             clearCache()
             notifyChanged()
         }
@@ -79,7 +81,7 @@ object MediaRepository {
     ): Tag? =
         withContext(Dispatchers.IO) {
             if (oldName != newName) {
-                SecureDatabase.renameTag(oldName, newName)
+                secureDatabase.renameTag(oldName, newName)
                 clearCache()
             }
 
@@ -88,7 +90,7 @@ object MediaRepository {
 
     suspend fun deleteTag(tag: Tag): Unit =
         withContext(Dispatchers.IO) {
-            SecureDatabase.deleteTag(tag.name)
+            secureDatabase.deleteTag(tag.name)
             clearCache()
             notifyChanged()
         }

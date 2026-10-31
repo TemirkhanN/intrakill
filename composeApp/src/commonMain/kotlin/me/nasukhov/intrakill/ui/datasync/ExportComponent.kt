@@ -5,7 +5,9 @@ import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.decompose.value.update
 import com.arkivanov.essenty.backhandler.BackCallback
+import kotlinx.coroutines.launch
 import me.nasukhov.intrakill.getLocalIpAddress
+import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.DbExporter
 import me.nasukhov.intrakill.storage.ExportProcess
 import me.nasukhov.intrakill.ui.root.Request
@@ -37,8 +39,11 @@ interface ExportComponent {
 class DefaultExportComponent(
     context: ComponentContext,
     private val navigate: (Request) -> Unit,
+    private val exporter: DbExporter,
 ) : ExportComponent,
     ComponentContext by context {
+    private val scope = instanceKeeper.coroutineScope()
+
     private data class ExportParams(
         val password: String = "",
         val port: Int = 8080,
@@ -82,27 +87,29 @@ class DefaultExportComponent(
         // Switch state to enabled until exporter confirms it
         mutableState.update { it.copy(errors = emptyList(), isEnabled = true) }
 
-        val enabled =
-            DbExporter.start(current.password, current.port) { exportProcess ->
-                // Basically, hook that switches begin/end state of the export process
-                // Note: this is from exporters perspective. Importer might need some additional time to handle
-                // received instructions. i.e. download file (provided by exporter), then handle it (performed by importer)
-                mutableState.update { it.copy(isInProgress = exportProcess == ExportProcess.BEGUN) }
-            }
+        scope.launch {
+            val enabled =
+                exporter.start(current.password, current.port) { exportProcess ->
+                    // Basically, hook that switches begin/end state of the export process
+                    // Note: this is from exporters perspective. Importer might need some additional time to handle
+                    // received instructions. i.e. download file (provided by exporter), then handle it (performed by importer)
+                    mutableState.update { it.copy(isInProgress = exportProcess == ExportProcess.BEGUN) }
+                }
 
-        if (!enabled) {
-            mutableState.update {
-                it.copy(
-                    errors = listOf("Couldn't enable export. Likely, wrong password."),
-                    isEnabled = false,
-                )
+            if (!enabled) {
+                mutableState.update {
+                    it.copy(
+                        errors = listOf("Couldn't enable export. Likely, wrong password."),
+                        isEnabled = false,
+                    )
+                }
             }
         }
     }
 
     override fun disable() {
         mutableState.update { it.copy(isEnabled = false, isInProgress = false) }
-        DbExporter.stop()
+        scope.launch { exporter.stop() }
     }
 
     override fun close() {

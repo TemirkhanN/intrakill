@@ -10,15 +10,10 @@ import java.sql.Connection
 import java.sql.DriverManager
 import kotlin.use
 
-actual object SecureDatabase {
-    internal var dbName = "secured.db"
-        set(value) {
-            if (field != value) {
-                connection?.close()
-                connection = null
-            }
-            field = value
-        }
+class SecureDatabaseJvm(
+    private val filesystem: Filesystem,
+) : SecureDatabase {
+    internal val dbName = "secured.db"
 
     private var connection: Connection? = null
 
@@ -30,13 +25,9 @@ actual object SecureDatabase {
     private val attachmentRepository by lazy { AttachmentRepository(::db) }
     private val entryRepository by lazy { EntryRepository(::db, attachmentRepository, tagRepository) }
 
-    internal fun switchDb(name: String) {
-        dbName = name
-    }
+    override fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it, filesystem) }
 
-    actual fun dumpDatabase(): File = connection!!.let { SqlDumpExporter.exportToPlainDatabase(it) }
-
-    actual fun updateSettings(settings: Map<String, String>) {
+    override fun updateSettings(settings: Map<String, String>) {
         db
             .prepareStatement(
                 "INSERT INTO settings(`name`, `value`) VALUES(?, ?) " +
@@ -53,7 +44,7 @@ actual object SecureDatabase {
             }
     }
 
-    actual fun getSettings(): Map<String, String> {
+    override fun getSettings(): Map<String, String> {
         val result = mutableMapOf<String, String>()
         db.prepareStatement("SELECT `name`, `value` FROM settings").use { stmt ->
             val rs = stmt.executeQuery()
@@ -65,7 +56,7 @@ actual object SecureDatabase {
         return result
     }
 
-    actual fun importFromFile(
+    override fun importFromFile(
         file: File,
         password: String,
     ): Boolean {
@@ -78,7 +69,7 @@ actual object SecureDatabase {
             }
 
             // 2. Replace the current DB file with the unencrypted import file
-            val newDb = Filesystem.getDbFile("new_$dbName")
+            val newDb = filesystem.getDbFile("new_$dbName")
             if (newDb.exists()) newDb.delete()
             file.let {
                 it.copyTo(newDb)
@@ -95,21 +86,20 @@ actual object SecureDatabase {
                 close()
             }
 
-            // TODO check if newDb is valid and working before replacing old db
-            val oldDb = Filesystem.getDbFile(dbName).also { if (it.exists()) it.delete() }
+            val oldDb = filesystem.getDbFile(dbName).also { if (it.exists()) it.delete() }
             return newDb.renameTo(oldDb) && open(password)
         } catch (_: Exception) {
             return false
         }
     }
 
-    actual fun open(password: String): Boolean {
+    override fun open(password: String): Boolean {
         connection?.close()
         connection = null
 
         return try {
             connection =
-                Filesystem.getDbFile(dbName).openSqliteConnection(password = password).apply {
+                filesystem.getDbFile(dbName).openSqliteConnection(password = password).apply {
                     createStatement().use { stmt ->
                         stmt.execute("PRAGMA cipher_memory_security = ON;")
 
@@ -127,7 +117,7 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun changePassword(newPassword: String): Boolean =
+    override fun changePassword(newPassword: String): Boolean =
         connection?.let {
             it.createStatement().use { stmt ->
                 val escapedPass = newPassword.replace("'", "''")
@@ -137,33 +127,37 @@ actual object SecureDatabase {
             open(newPassword)
         } ?: false
 
-    actual fun saveEntry(entry: Entry) = entryRepository.save(entry)
+    override fun saveEntry(entry: Entry) = entryRepository.save(entry)
 
-    actual fun countEntries(filter: EntriesFilter): Int = entryRepository.countByFilter(filter)
+    override fun countEntries(filter: EntriesFilter): Int = entryRepository.countByFilter(filter)
 
-    actual fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
+    override fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
 
-    actual fun deleteById(entryId: String) = entryRepository.deleteById(entryId)
+    override fun deleteById(entryId: String) = entryRepository.deleteById(entryId)
 
-    actual fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
+    override fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
 
-    actual fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
+    override fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
 
-    actual fun listTags(): Set<Tag> = tagRepository.findAll()
+    override fun listTags(): Set<Tag> = tagRepository.findAll()
 
-    actual fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
+    override fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
 
-    actual fun deleteTag(tagName: String) = tagRepository.deleteTag(tagName)
+    override fun deleteTag(tagName: String) = tagRepository.deleteTag(tagName)
 
-    actual fun renameTag(
+    override fun renameTag(
         oldName: String,
         newName: String,
     ) = tagRepository.renameTag(oldName, newName)
 }
 
+// TODO there is no point in having the object. Could be just the function
 private object SqlDumpExporter {
-    fun exportToPlainDatabase(db: Connection): File {
-        val exportTo = Filesystem.getTmpFile("export_storage")
+    fun exportToPlainDatabase(
+        db: Connection,
+        filesystem: Filesystem,
+    ): File {
+        val exportTo = filesystem.getTmpFile("export_storage")
 
         try {
             val absolutePath = exportTo.absolutePath.replace("'", "''")

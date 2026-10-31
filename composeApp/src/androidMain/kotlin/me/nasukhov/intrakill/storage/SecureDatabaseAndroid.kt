@@ -40,10 +40,21 @@ private class DBHelper(
     }
 }
 
-actual object SecureDatabase {
-    private const val DB_NAME = "secured.db"
+class SecureDatabaseAndroid(
+    context: Context,
+    private val fs: Filesystem,
+) : SecureDatabase {
+    companion object {
+        private const val DB_NAME = "secured.db"
+    }
 
-    private var helper: DBHelper? = null
+    private val helper: DBHelper =
+        DBHelper(
+            context,
+            { Migrator().migrate(SQLAdapterAndroid(it)) },
+            DB_NAME,
+        )
+
     private var db: SQLiteDatabase? = null
 
     private val conn
@@ -53,14 +64,9 @@ actual object SecureDatabase {
     private val attachmentRepository by lazy { AttachmentRepository(::conn) }
     private val entryRepository by lazy { EntryRepository(::conn, attachmentRepository, tagRepository) }
 
-    /** Initialize with a context before opening the database */
-    fun init(context: Context) {
-        helper = DBHelper(context, { Migrator().migrate(SQLAdapterAndroid(it)) }, DB_NAME)
-    }
-
-    actual fun dumpDatabase(): File {
+    override fun dumpDatabase(): File {
         val db = db!!
-        val tempFile = Filesystem.getTmpFile("plain.db")
+        val tempFile = fs.getTmpFile("plain.db")
         if (tempFile.exists()) tempFile.delete()
 
         val escapedPath = tempFile.absolutePath.replace("'", "''")
@@ -77,7 +83,7 @@ actual object SecureDatabase {
         return tempFile
     }
 
-    actual fun updateSettings(settings: Map<String, String>) {
+    override fun updateSettings(settings: Map<String, String>) {
         settings.forEach { (name, value) ->
             conn.execSQL(
                 "INSERT INTO settings(name, value) VALUES(?, ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value",
@@ -86,7 +92,7 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun getSettings(): Map<String, String> {
+    override fun getSettings(): Map<String, String> {
         val result = mutableMapOf<String, String>()
         conn.rawQuery("SELECT `name`, `value` FROM settings", null).use { c ->
             while (c.moveToNext()) {
@@ -97,17 +103,17 @@ actual object SecureDatabase {
         return result
     }
 
-    actual fun importFromFile(
+    override fun importFromFile(
         file: File,
         password: String,
     ): Boolean {
-        val context = helper!!.ctx
+        val context = helper.ctx
         SQLiteDatabase.loadLibs(context)
 
         val plainDb = SQLiteDatabase.openOrCreateDatabase(file.absolutePath, "", null)
 
         try {
-            val newDb = Filesystem.getDbFile("new_${DB_NAME}").also { if (it.exists()) it.delete() }
+            val newDb = fs.getDbFile("new_${DB_NAME}").also { if (it.exists()) it.delete() }
             val escapedTargetPath = newDb.absolutePath.replace("'", "''")
             plainDb.execSQL("ATTACH DATABASE '$escapedTargetPath' AS encrypted_db KEY '$password'")
             // extension can not be invoked by execSQL nor query and requires rawExecSQL
@@ -115,7 +121,7 @@ actual object SecureDatabase {
             plainDb.execSQL("DETACH DATABASE encrypted_db")
 
             return if (newDb.exists() && newDb.length() > 0) {
-                val oldDb = Filesystem.getDbFile(DB_NAME).also { if (it.exists()) it.delete() }
+                val oldDb = fs.getDbFile(DB_NAME).also { if (it.exists()) it.delete() }
                 newDb.renameTo(oldDb) && open(password)
             } else {
                 false
@@ -127,20 +133,19 @@ actual object SecureDatabase {
         }
     }
 
-    actual fun open(password: String): Boolean {
+    override fun open(password: String): Boolean {
         db?.close()
-        val ctx = helper ?: error("SecureDatabase not initialized. Call SecureDatabase.init(context) first.")
 
         return try {
-            SQLiteDatabase.loadLibs(ctx.ctx)
-            db = ctx.getWritableDatabase(password)
+            SQLiteDatabase.loadLibs(helper.ctx)
+            db = helper.getWritableDatabase(password)
             true
         } catch (_: Exception) {
             false
         }
     }
 
-    actual fun changePassword(newPassword: String): Boolean =
+    override fun changePassword(newPassword: String): Boolean =
         db?.let {
             val escapedPass = newPassword.replace("'", "''")
             it.rawExecSQL("PRAGMA rekey = '$escapedPass'")
@@ -148,25 +153,25 @@ actual object SecureDatabase {
             open(newPassword)
         } ?: false
 
-    actual fun saveEntry(entry: Entry) = entryRepository.save(entry)
+    override fun saveEntry(entry: Entry) = entryRepository.save(entry)
 
-    actual fun countEntries(filter: EntriesFilter): Int = entryRepository.count(filter)
+    override fun countEntries(filter: EntriesFilter): Int = entryRepository.count(filter)
 
-    actual fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
+    override fun findEntries(filter: EntriesFilter): List<Entry> = entryRepository.findByFilter(filter)
 
-    actual fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
+    override fun getById(entryId: String): Entry = entryRepository.findById(entryId)!!
 
-    actual fun deleteById(entryId: String) = entryRepository.delete(entryId)
+    override fun deleteById(entryId: String) = entryRepository.delete(entryId)
 
-    actual fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
+    override fun getAttachmentContent(attachmentId: String) = attachmentRepository.getContent(attachmentId)
 
-    actual fun listTags(): Set<Tag> = tagRepository.listTags()
+    override fun listTags(): Set<Tag> = tagRepository.listTags()
 
-    actual fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
+    override fun filterMissingIds(fromIds: Set<String>) = entryRepository.findMissing(fromIds)
 
-    actual fun deleteTag(tagName: String) = tagRepository.deleteTag(tagName)
+    override fun deleteTag(tagName: String) = tagRepository.deleteTag(tagName)
 
-    actual fun renameTag(
+    override fun renameTag(
         oldName: String,
         newName: String,
     ) = tagRepository.renameTag(oldName, newName)

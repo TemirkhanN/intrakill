@@ -11,6 +11,7 @@ import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.DbImporter
 import me.nasukhov.intrakill.storage.Progress
 import me.nasukhov.intrakill.storage.StorageSource
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.validatePassword
@@ -40,7 +41,9 @@ interface ImportComponent {
 
 class DefaultImportComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit,
+    private val navigate: ComponentNavigation,
+    private val mediaRepository: MediaRepository,
+    private val dbImporter: DbImporter,
 ) : ImportComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
@@ -77,7 +80,7 @@ class DefaultImportComponent(
             val errors = mutableListOf<Notification>()
             val success =
                 try {
-                    DbImporter.importDatabase(
+                    dbImporter.importDatabase(
                         source = StorageSource(current.ip, 8080),
                         password = current.password,
                     ) { progress ->
@@ -90,7 +93,7 @@ class DefaultImportComponent(
                     false
                 }
 
-            if (success && MediaRepository.unlock(current.password)) {
+            if (success && mediaRepository.unlock(current.password)) {
                 navigate(Request.ListEntries())
             } else {
                 mutableState.update {
@@ -114,7 +117,7 @@ class DefaultImportComponent(
         }
 
         scope.launch {
-            if (!MediaRepository.unlock(current.password)) {
+            if (!mediaRepository.unlock(current.password)) {
                 mutableState.update {
                     it.copy(
                         isInProgress = false,
@@ -128,7 +131,7 @@ class DefaultImportComponent(
 
             try {
                 var totalSynced = 0
-                DbImporter.syncEntries(
+                dbImporter.syncEntries(
                     StorageSource(current.ip, 8080),
                     password = current.password,
                     onProgress = { newProgress ->

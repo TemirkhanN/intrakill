@@ -12,6 +12,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
 import kotlin.math.min
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -24,24 +26,26 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class SecureDatabaseTest {
-    // Careful. Do not accidentally delete dev db by using same value as SecureDatabase.dbName
-    private val dbName = "testDatabaseSecured.db"
-
+class SecureDatabaseJvmTest {
     private val password = "test-password"
 
-    private val db = SecureDatabase
+    @TempDir
+    lateinit var fsRoot: File
+
+    private lateinit var fs: Filesystem
+
+    private lateinit var db: SecureDatabaseJvm
 
     private val currentTime = Clock.System.now()
 
-    private val connection by lazy {
-        Filesystem.getDbFile(dbName).apply { deleteOnExit() }.openSqliteConnection(password)
-    }
+    private val connection by lazy { fs.getDbFile(db.dbName).openSqliteConnection(password) }
 
     @BeforeEach
     fun setUp() {
+        fs = FilesystemJvm(rootDir = fsRoot.path)
+        db = SecureDatabaseJvm(fs)
         deleteDatabase()
-        db.switchDb(dbName)
+
         db.open(password)
     }
 
@@ -58,7 +62,7 @@ class SecureDatabaseTest {
 
     @Test
     fun `open should reopen database with the valid password`() {
-        // Ensure that it's possible to save data into database
+        // Ensure that it's possible to save data into the database
         val entry = createEntry()
 
         assertTrue(db.open(password))
@@ -147,7 +151,7 @@ class SecureDatabaseTest {
             "case10" to Pair(EntriesFilter(limit = 10, offset = 4), allExistingEntries.size),
         ).forEach {
             val (filter, totalEntriesMatchingFilter) = it.value
-            assertEntriesEquals(allExistingEntries.select(filter), db.findEntries(filter), it.key)
+            assertEntriesEquals(allExistingEntries.filterBy(filter), db.findEntries(filter), it.key)
             assertEquals(totalEntriesMatchingFilter, db.countEntries(filter), it.key)
         }
     }
@@ -271,12 +275,10 @@ class SecureDatabaseTest {
             }
     }
 
-    private fun deleteDatabase(name: String = dbName) {
-        Filesystem.getDbFile(name).delete()
-    }
+    private fun deleteDatabase() = fs.getDbFile(db.dbName).delete()
 }
 
-private fun List<Entry>.select(filter: EntriesFilter): List<Entry> {
+private fun List<Entry>.filterBy(filter: EntriesFilter): List<Entry> {
     val from = filter.offset
     val filteredByTags = this.filter { it.tags.containsAll(filter.tags) }
     return if (from >= filteredByTags.size || filteredByTags.isEmpty()) {

@@ -9,11 +9,12 @@ import me.nasukhov.intrakill.domain.model.AppSetting
 import me.nasukhov.intrakill.domain.model.Settings
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import me.nasukhov.intrakill.validatePassword
 
-data class AppSettings(
+data class SettingsState(
     val entriesPerPage: AppSetting<Int>,
     val password: AppSetting<String>,
     val notifications: List<Notification> = emptyList(),
@@ -21,7 +22,7 @@ data class AppSettings(
 )
 
 interface SettingsComponent {
-    val state: Value<AppSettings>
+    val state: Value<SettingsState>
 
     fun changePassword(password: String)
 
@@ -34,19 +35,21 @@ interface SettingsComponent {
 
 class DefaultSettingsComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit,
+    private val navigate: ComponentNavigation,
+    private val mediaRepository: MediaRepository,
+    private val settings: Settings,
 ) : SettingsComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
     private val mutableState =
         MutableValue(
-            AppSettings(
-                entriesPerPage = Settings.entriesPerPage,
+            SettingsState(
+                entriesPerPage = settings.entriesPerPage,
                 password = AppSetting.applied(""),
             ),
         )
 
-    override val state: Value<AppSettings> = mutableState
+    override val state: Value<SettingsState> = mutableState
 
     override fun changePassword(password: String) {
         mutableState.update { it.copy(password = AppSetting(password)) }
@@ -64,17 +67,17 @@ class DefaultSettingsComponent(
     }
 
     override fun save() {
-        val settings = state.value
-        if (settings.isSaving) {
+        val settingsState = state.value
+        if (settingsState.isSaving) {
             return
         }
 
         val notifications = mutableListOf<Notification>()
 
-        Settings.setEntriesPerPage(settings.entriesPerPage.value)
-        if (Settings.haveChanged()) {
+        settings.setEntriesPerPage(settings.entriesPerPage.value)
+        if (settings.haveChanged()) {
             mutableState.update { it.copy(isSaving = true, notifications = notifications) }
-            Settings.save()
+            settings.save()
             notifications.add(Notification.info("New settings applied"))
 
             // Mark settings as applied
@@ -87,8 +90,8 @@ class DefaultSettingsComponent(
             }
         }
 
-        val newPassword = settings.password.value
-        if (settings.password.isApplied) {
+        val newPassword = settingsState.password.value
+        if (settingsState.password.isApplied) {
             return
         }
         if (newPassword.isBlank()) {
@@ -107,7 +110,7 @@ class DefaultSettingsComponent(
         }
 
         scope.launch {
-            if (MediaRepository.changePassword(newPassword)) {
+            if (mediaRepository.changePassword(newPassword)) {
                 notifications.add(Notification.info("New password is set"))
                 mutableState.update {
                     it.copy(

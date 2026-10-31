@@ -5,25 +5,13 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.core.content.FileProvider
+import me.nasukhov.intrakill.Ioc
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.storage.Filesystem
 import java.io.File
 
-object AndroidClipboard {
-    private lateinit var context: Context
-
-    fun init(context: Context) {
-        this.context = context.applicationContext
-    }
-
-    internal fun requireContext(): Context {
-        check(::context.isInitialized) { "AndroidClipboard is not initialized" }
-        return context
-    }
-}
-
 actual fun copyImageAttachmentToClipboard(attachment: Attachment) {
-    val context = AndroidClipboard.requireContext()
+    val context: Context = Ioc.locate()
     val file = attachment.writeClipboardCacheFile()
     val uri =
         FileProvider.getUriForFile(
@@ -41,7 +29,8 @@ actual fun copyImageAttachmentToClipboard(attachment: Attachment) {
 }
 
 private fun Attachment.writeClipboardCacheFile(): File {
-    val file = Filesystem.getTmpFile("clipboard-image").withExtension(fileExtension())
+    val filesystem: Filesystem = Ioc.locate()
+    val file = filesystem.getTmpFile("clipboard-image").withExtension(fileExtension())
     content.use { input ->
         file.outputStream().use { output -> input.copyTo(output) }
     }

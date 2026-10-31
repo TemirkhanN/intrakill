@@ -1,5 +1,6 @@
 package me.nasukhov.intrakill.ui.clipboard
 
+import me.nasukhov.intrakill.Ioc
 import me.nasukhov.intrakill.domain.model.Attachment
 import me.nasukhov.intrakill.storage.Filesystem
 import java.awt.Image
@@ -11,7 +12,8 @@ import java.io.File
 import javax.imageio.ImageIO
 
 actual fun copyImageAttachmentToClipboard(attachment: Attachment) {
-    val file = Filesystem.getTmpFile("clipboard-image").withExtension(attachment.fileExtension())
+    val fs: Filesystem = Ioc.locate()
+    val file = fs.getTmpFile("clipboard-image").withExtension(attachment.fileExtension())
     val bytes =
         attachment.content.use { input ->
             input.readBytes()

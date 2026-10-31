@@ -23,8 +23,8 @@ import javax.imageio.ImageIO
 import javax.swing.JFileChooser
 import kotlin.math.min
 
-actual object FilePicker {
-    actual suspend fun pickMultiple(): List<Result<PickedMedia>> =
+class FilePickerJvm : FilePicker {
+    override suspend fun pickMultiple(): List<Result<PickedMedia>> =
         withContext(Dispatchers.IO) {
             val chooser =
                 JFileChooser().apply {

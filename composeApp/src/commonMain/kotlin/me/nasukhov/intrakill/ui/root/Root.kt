@@ -10,22 +10,19 @@ import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceAll
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
-import me.nasukhov.intrakill.domain.repository.MediaRepository
-import me.nasukhov.intrakill.ui.auth.DefaultLoginComponent
 import me.nasukhov.intrakill.ui.auth.LoginComponent
-import me.nasukhov.intrakill.ui.datasync.DefaultExportComponent
-import me.nasukhov.intrakill.ui.datasync.DefaultImportComponent
 import me.nasukhov.intrakill.ui.datasync.ExportComponent
 import me.nasukhov.intrakill.ui.datasync.ImportComponent
 import me.nasukhov.intrakill.ui.entries.AddEntryComponent
-import me.nasukhov.intrakill.ui.entries.DefaultAddEntryComponent
-import me.nasukhov.intrakill.ui.entries.DefaultEntryComponent
-import me.nasukhov.intrakill.ui.entries.DefaultListEntriesComponent
 import me.nasukhov.intrakill.ui.entries.EntryComponent
 import me.nasukhov.intrakill.ui.entries.ListEntriesComponent
-import me.nasukhov.intrakill.ui.settings.DefaultSettingsComponent
 import me.nasukhov.intrakill.ui.settings.SettingsComponent
 import me.nasukhov.intrakill.ui.tag.TagsComponent
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
+import org.koin.core.parameter.parametersOf
+
+typealias ComponentNavigation = (Request) -> Unit
 
 interface RootComponent {
     val stack: Value<ChildStack<*, Child>>
@@ -68,6 +65,7 @@ interface RootComponent {
 class DefaultRootComponent(
     componentContext: ComponentContext,
 ) : RootComponent,
+    KoinComponent,
     ComponentContext by componentContext {
     private val navigation = StackNavigation<Route>()
 
@@ -86,67 +84,32 @@ class DefaultRootComponent(
     ): RootComponent.Child =
         when (route) {
             is Route.Login ->
-                RootComponent.Child.Login(
-                    DefaultLoginComponent(
-                        context = context,
-                        navigate = ::handleLoginRequests,
-                    ),
-                )
+                RootComponent.Child.Login(get { parametersOf(context, ::handleLoginRequests) })
+
             is Route.Import ->
-                RootComponent.Child.Import(
-                    DefaultImportComponent(
-                        context = context,
-                        navigate = ::handleImportRequests,
-                    ),
-                )
+                RootComponent.Child.Import(get { parametersOf(context, ::handleImportRequests) })
+
             is Route.Export ->
-                RootComponent.Child.Export(
-                    DefaultExportComponent(
-                        context = context,
-                        navigate = ::handleExportRequests,
-                    ),
-                )
+                RootComponent.Child.Export(get { parametersOf(context, ::handleExportRequests) })
+
             is Route.List ->
-                RootComponent.Child.List(
-                    DefaultListEntriesComponent(
-                        context = context,
-                        navigate = ::handleContentListRequests,
-                        config = route,
-                    ),
-                )
+                RootComponent.Child.List(get { parametersOf(context, ::handleContentListRequests, route) })
+
             is Route.View -> {
                 RootComponent.Child.View(
-                    DefaultEntryComponent(
-                        context = context,
-                        entryId = route.entryId,
-                        navigate = ::handleEntryViewRequests,
-                    ),
+                    get { parametersOf(context, ::handleEntryViewRequests, route.entryId) },
                 )
             }
+
             is Route.AddEntry ->
-                RootComponent.Child.AddEntry(
-                    DefaultAddEntryComponent(
-                        context = context,
-                        navigate = ::handleAddEntryRequests,
-                        mediaRepository = MediaRepository,
-                    ),
-                )
+                RootComponent.Child.AddEntry(get { parametersOf(context, ::handleAddEntryRequests) })
+
             is Route.OpenSettings -> {
-                RootComponent.Child.Settings(
-                    DefaultSettingsComponent(
-                        context = context,
-                        navigate = ::handleSettingsRequests,
-                    ),
-                )
+                RootComponent.Child.Settings(get { parametersOf(context, ::handleSettingsRequests) })
             }
+
             is Route.OpenTags -> {
-                RootComponent.Child.Tags(
-                    TagsComponent(
-                        mediaRepository = MediaRepository,
-                        context = context,
-                        navigate = ::handleTagsRequests,
-                    ),
-                )
+                RootComponent.Child.Tags(get { parametersOf(context, ::handleTagsRequests) })
             }
         }
 

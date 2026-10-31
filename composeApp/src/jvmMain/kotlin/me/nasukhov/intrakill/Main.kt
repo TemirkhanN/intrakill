@@ -10,11 +10,27 @@ import androidx.compose.ui.window.rememberWindowState
 import chaintech.videoplayer.util.LocalWindowState
 import com.arkivanov.decompose.DefaultComponentContext
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
+import me.nasukhov.intrakill.storage.FilePicker
+import me.nasukhov.intrakill.storage.FilePickerJvm
+import me.nasukhov.intrakill.storage.Filesystem
+import me.nasukhov.intrakill.storage.FilesystemJvm
+import me.nasukhov.intrakill.storage.SecureDatabase
+import me.nasukhov.intrakill.storage.SecureDatabaseJvm
 import me.nasukhov.intrakill.ui.root.DefaultRootComponent
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 
 @Suppress("ktlint:standard:function-naming")
 fun main() =
     application {
+        val jvmSpecificDefinitions =
+            module {
+                singleOf<Filesystem>(::FilesystemJvm)
+                singleOf<FilePicker>(::FilePickerJvm)
+                single<SecureDatabase> { SecureDatabaseJvm(filesystem = get()) }
+            }
+        Ioc(jvmSpecificDefinitions)
+
         val lifecycle = LifecycleRegistry()
         val root = DefaultRootComponent(DefaultComponentContext(lifecycle))
 

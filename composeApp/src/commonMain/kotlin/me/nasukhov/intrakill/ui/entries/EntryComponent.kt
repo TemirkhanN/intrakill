@@ -17,6 +17,7 @@ import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.FilePicker
 import me.nasukhov.intrakill.storage.Sharing
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.view.Notification
 import qrcode.QRCode
@@ -65,15 +66,16 @@ interface EntryComponent {
 
 class DefaultEntryComponent(
     context: ComponentContext,
+    private val navigate: ComponentNavigation,
     entryId: String,
-    private val navigate: (Request) -> Unit,
+    private val filePicker: FilePicker,
+    private val mediaRepository: MediaRepository,
 ) : EntryComponent,
     ComponentContext by context {
     private val mutableState = MutableValue(EntryState(entryId = entryId, isLoading = true))
     override val state: Value<EntryState> = mutableState
     private val scope = instanceKeeper.coroutineScope()
 
-    private val mediaRepository = MediaRepository
     private var sharing: Sharing? = null
 
     init {
@@ -200,7 +202,7 @@ class DefaultEntryComponent(
             require(current.entry != null)
 
             scope.launch {
-                val picked = FilePicker.pickMultiple()
+                val picked = filePicker.pickMultiple()
                 val newAttachments =
                     picked.filter { it.isSuccess }.mapIndexed { index, result ->
                         val it = result.getOrThrow()

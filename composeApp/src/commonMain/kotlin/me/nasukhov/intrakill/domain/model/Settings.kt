@@ -13,10 +13,14 @@ data class AppSetting<T>(
     }
 }
 
-object Settings {
-    private const val NAME_ENTRIES_PER_PAGE = "entriesPerPage"
+class Settings(
+    private val db: SecureDatabase,
+) {
+    companion object {
+        private const val NAME_ENTRIES_PER_PAGE = "entriesPerPage"
+    }
 
-    private var persisted = SecureDatabase.getSettings()
+    private var persisted = lazy { db.getSettings() }
 
     var entriesPerPage: AppSetting<Int> = AppSetting.applied(getSetting(NAME_ENTRIES_PER_PAGE, "12").toInt())
         private set
@@ -34,7 +38,7 @@ object Settings {
     private fun getSetting(
         name: String,
         default: String,
-    ): String = persisted.getOrElse(name) { default }
+    ): String = persisted.value.getOrElse(name) { default }
 
     fun haveChanged(): Boolean = !entriesPerPage.isApplied
 
@@ -52,8 +56,8 @@ object Settings {
         }
 
         val newSettings = current
-        SecureDatabase.updateSettings(newSettings)
-        persisted = newSettings
+        db.updateSettings(newSettings)
+        persisted = lazy { db.getSettings() }
 
         _updates.tryEmit(Unit)
     }

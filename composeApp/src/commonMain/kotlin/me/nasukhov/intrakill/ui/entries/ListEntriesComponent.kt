@@ -17,6 +17,7 @@ import me.nasukhov.intrakill.domain.repository.EntriesSearchResult
 import me.nasukhov.intrakill.domain.repository.MediaRepository
 import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.EntriesFilter
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import me.nasukhov.intrakill.ui.root.Route
 import kotlin.math.max
@@ -46,8 +47,10 @@ interface ListEntriesComponent {
 
 class DefaultListEntriesComponent(
     context: ComponentContext,
+    private val navigate: ComponentNavigation,
     config: Route.List, // TODO feels odd
-    private val navigate: (Request) -> Unit,
+    private val mediaRepository: MediaRepository,
+    private val settings: Settings,
 ) : ListEntriesComponent,
     ComponentContext by context {
     override val knownTags = MutableValue<Set<Tag>>(emptySet())
@@ -64,7 +67,7 @@ class DefaultListEntriesComponent(
                 EntriesFilter(
                     offset = config.offset,
                     tags = config.filterByTags,
-                    limit = Settings.entriesPerPage.value,
+                    limit = settings.entriesPerPage.value,
                 )
             applyFilter(filter)
 
@@ -73,11 +76,11 @@ class DefaultListEntriesComponent(
             // OR the config (change amount of per page items or other UI features)
             // we have to refresh the search result
             merge(
-                MediaRepository.updates,
-                Settings.updates,
+                mediaRepository.updates,
+                settings.updates,
             ).collectLatest {
                 refreshKnownTags()
-                val newFilter = state.value.filter.copy(limit = Settings.entriesPerPage.value)
+                val newFilter = state.value.filter.copy(limit = settings.entriesPerPage.value)
                 applyFilter(newFilter)
             }
         }
@@ -116,7 +119,7 @@ class DefaultListEntriesComponent(
     override fun openTagsScene() = navigate(Request.OpenTags)
 
     private suspend fun refreshKnownTags() {
-        val allTags = MediaRepository.listTags()
+        val allTags = mediaRepository.listTags()
         knownTags.update { allTags }
     }
 
@@ -132,7 +135,7 @@ class DefaultListEntriesComponent(
             )
         }
 
-        val result = MediaRepository.findEntries(newFilter)
+        val result = mediaRepository.findEntries(newFilter)
 
         mutableState.update {
             it.copy(

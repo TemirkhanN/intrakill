@@ -18,6 +18,7 @@ import me.nasukhov.intrakill.kmp.coroutineScope
 import me.nasukhov.intrakill.storage.ExternalStorage
 import me.nasukhov.intrakill.storage.FilePicker
 import me.nasukhov.intrakill.storage.Sharing
+import me.nasukhov.intrakill.ui.root.ComponentNavigation
 import me.nasukhov.intrakill.ui.root.Request
 import java.util.UUID
 
@@ -57,8 +58,10 @@ data class NewEntryState(
 
 class DefaultAddEntryComponent(
     context: ComponentContext,
-    private val navigate: (Request) -> Unit,
+    private val navigate: ComponentNavigation,
     private val mediaRepository: MediaRepository,
+    private val filePicker: FilePicker,
+    private val externalStorage: ExternalStorage,
 ) : AddEntryComponent,
     ComponentContext by context {
     private val scope = instanceKeeper.coroutineScope()
@@ -100,7 +103,7 @@ class DefaultAddEntryComponent(
 
     override fun promptAttachmentSelection() {
         scope.launch {
-            val picked = FilePicker.pickMultiple()
+            val picked = filePicker.pickMultiple()
             val newAttachments =
                 picked.filter { it.isSuccess }.mapIndexed { index, result ->
                     val it = result.getOrThrow()
@@ -162,7 +165,7 @@ class DefaultAddEntryComponent(
                 try {
                     val entryWithTheSameId = mediaRepository.findById(data.entryId)
                     val sharedEntry =
-                        ExternalStorage.open(data.source, data.key.toString()) {
+                        externalStorage.open(data.source, data.key.toString()) {
                             getById(data.entryId)
                         }
 
