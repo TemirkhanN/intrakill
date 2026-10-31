@@ -79,6 +79,7 @@ kotlin {
             implementation(libs.desktop.database.sqlcipher)
             implementation(libs.ktor.server.desktop)
             implementation(libs.javacv.platform)
+            implementation("net.java.dev.jna:jna:5.14.0")
         }
         jvmTest.dependencies {
             implementation(libs.junit.jupiter)
